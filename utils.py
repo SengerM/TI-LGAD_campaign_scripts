@@ -54,6 +54,8 @@ def line(error_y_mode=None, **kwargs):
 					hoverinfo = "skip",
 					showlegend = False,
 					legendgroup = data['legendgroup'],
+					xaxis = data['xaxis'],
+					yaxis = data['yaxis'],
 				)
 			)
 		# Reorder data as said here: https://stackoverflow.com/a/66854398/8849755
