@@ -14,7 +14,7 @@ def read_devices_sheet():
 	return df.loc[:, ~df.columns.str.contains('^Unnamed')].set_index('#')
 
 def tag_left_right_pad(data_df):
-	if len(set(data_df['#'])) > 1:
+	if '#' in data_df and len(set(data_df['#'])) > 1:
 		raise ValueError(f'`data_df` must contain data from a single device, I have received a dataframe with data from {len(set(data_df["#"]))} devices.')
 	channels = set(data_df['n_channel'])
 	if len(channels) != 2:
@@ -93,3 +93,14 @@ def calculate_1D_scan_distance_from_dataframe(df):
 	distances_df.set_index('n_position')
 	return distances_df
 	
+def pre_process_raw_data(data_df):
+	"""Given data from a single device, this function performs many "common things" such as calculating the distance, adding the "left pad" or "right pad", etc."""
+	if '#' in data_df and len(set(data_df['#'])) > 1:
+		raise ValueError(f'`data_df` must contain data from a single device, I have received a dataframe with data from {len(set(data_df["#"]))} devices.')
+	for channel, pad in tag_left_right_pad(data_df).items():
+		data_df.loc[data_df['n_channel']==channel, 'Pad'] = pad
+	distances_df = calculate_1D_scan_distance_from_dataframe(data_df)
+	data_df.set_index('n_position', inplace=True)
+	data_df = data_df.merge(distances_df, left_index=True, right_index=True)
+	data_df = data_df.append(data_df, ignore_index=True)
+	return data_df
