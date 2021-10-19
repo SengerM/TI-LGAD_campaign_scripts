@@ -12,9 +12,23 @@ def read_devices_sheet():
 		sheet_name = 'devices',
 	)
 	return df.loc[:, ~df.columns.str.contains('^Unnamed')].set_index('#')
-	
+
+def tag_left_right_pad(data_df):
+	if len(set(data_df['#'])) > 1:
+		raise ValueError(f'`data_df` must contain data from a single device, I have received a dataframe with data from {len(set(data_df["#"]))} devices.')
+	channels = set(data_df['n_channel'])
+	if len(channels) != 2:
+		raise ValueError(f'`data_df` contains data concerning more than two channels. I can only tag left and right pads for two channels data.')
+	left_data = data_df.loc[(data_df['n_position']<data_df['n_position'].mean())]
+	right_data = data_df.loc[(data_df['n_position']>data_df['n_position'].mean())]
+	for channel in channels:
+		if left_data.loc[left_data['n_channel']==channel, 'Collected charge (V s)'].mean(skipna=True) > left_data.loc[~(left_data['n_channel']==channel), 'Collected charge (V s)'].mean(skipna=True):
+			return {channel: 'left', list(channels-{channel})[0]: 'right'}
+		else:
+			return {channel: 'right', list(channels-{channel})[0]: 'left'}
+
 def read_measured_data_from(measurement_name: str):
-	for scan_script_name in ['linear_scan_many_triggers_per_point','1D_scan']:
+	for scan_script_name in ['linear_scan_many_triggers_per_point','1D_scan', 'scan_1D']:
 		try: # First try to read feather as it is much faster.
 			return pandas.read_feather(path_to_base_TI_LGAD/Path('measurements_data')/Path(measurement_name)/Path(scan_script_name)/Path('measured_data.fd'))
 		except FileNotFoundError:
