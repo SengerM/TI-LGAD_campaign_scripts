@@ -3,8 +3,10 @@ from pathlib import Path
 import plotly.express as px
 import plotly.graph_objs as go
 import numpy as np
+from grafica.plotly_utils.utils import line as grafica_line
 
 path_to_base_TI_LGAD = Path('/home/alf/cernbox/projects/4D_sensors/TI-LGAD_FBK_RD50_1')
+path_to_measurements_directory = path_to_base_TI_LGAD/Path('measurements_data')
 
 def read_devices_sheet():
 	df = pandas.read_excel(

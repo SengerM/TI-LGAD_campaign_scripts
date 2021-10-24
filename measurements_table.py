@@ -3,8 +3,6 @@ import utils
 import pandas
 import datetime
 
-path_to_measurements_directory = utils.path_to_base_TI_LGAD/Path('measurements_data')
-
 possible_paths_of_1D_scan_scripts_backups = [
 	Path('scan_1D/backup.scan_1D.py'),
 	Path('linear_scan_many_triggers_per_point/backup.linear_scan_many_triggers_per_point.py'),
@@ -18,7 +16,7 @@ def retrieve_device_name(measurement_name):
 	return None
 
 def retrieve_measurement_type(measurement_name):
-	measurement_path = path_to_measurements_directory/Path(measurement_name)
+	measurement_path = utils.path_to_measurements_directory/Path(measurement_name)
 	list_of_directories_within_this_measurement = [p.parts[-1] for p in measurement_path.iterdir()]
 	
 	is_1D_scan = any(pattern.lower() in measurement_name.lower() for pattern in {'1DScan','LinearScan','linear_x','linear_y','linearx','lineary'}) or (any(subdir in list_of_directories_within_this_measurement for subdir in {'scan_1D', 'linear_scan_many_triggers_per_point', '1D_scan'}) and 'z_scan_to_find_focus' not in list_of_directories_within_this_measurement)
@@ -47,7 +45,7 @@ def retrieve_measurement_type(measurement_name):
 		return 'laser DAC scan'
 
 def _retrieve_1D_scan_script_variable_from_backup(measurement_name, variable_name):
-	measurement_path = path_to_measurements_directory/Path(measurement_name)
+	measurement_path = utils.path_to_measurements_directory/Path(measurement_name)
 	for path in [measurement_path/backup_path for backup_path in possible_paths_of_1D_scan_scripts_backups]:
 		try:
 			with open(path, 'r') as ifile:
@@ -72,7 +70,7 @@ def retrieve_bias_voltage(measurement_name):
 	return bias_voltage
 
 def retrieve_laser_DAC(measurement_name):
-	measurement_path = path_to_measurements_directory/Path(measurement_name)
+	measurement_path = utils.path_to_measurements_directory/Path(measurement_name)
 	if retrieve_measurement_type(measurement_name) not in {'scan 1D', 'z scan for focus'}:
 		return '-'
 	laser_DAC = _retrieve_1D_scan_script_variable_from_backup(measurement_name, 'laser_DAC')
@@ -84,7 +82,7 @@ def retrieve_laser_DAC(measurement_name):
 
 def create_measurements_table():
 	measurements_df = pandas.DataFrame(
-		{'Measurement name': [path.parts[-1] for path in sorted(path_to_measurements_directory.iterdir()) if path.is_dir()]},
+		{'Measurement name': [path.parts[-1] for path in sorted(utils.path_to_measurements_directory.iterdir()) if path.is_dir()]},
 	)
 	measurements_df.set_index('Measurement name', inplace=True)
 	for measurement_name in measurements_df.index:
@@ -99,4 +97,4 @@ def create_measurements_table():
 if __name__ == '__main__':
 	with pandas.option_context('display.max_rows', None):  # more options can be specified also
 		print(create_measurements_table().sort_values(['Bias voltage (V)', 'Type', 'Measurement name']))
-	# ~ create_measurements_table().to_excel(path_to_measurements_directory/Path('measurements_table.xlsx'))
+	# ~ create_measurements_table().to_excel(utils.path_to_measurements_directory/Path('measurements_table.xlsx'))
