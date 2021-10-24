@@ -28,7 +28,7 @@ mean_df.reset_index(inplace=True)
 
 # Normalize collected charge ---
 for device in set(mean_df['#']):
-	for n_pulse in sorted(set(mean_df['n_pulse'])):
+	for n_pulse in {1}:#sorted(set(mean_df['n_pulse'])):
 		for n_channel in sorted(set(mean_df['n_channel'])):
 			mean_df.loc[(mean_df['#']==device)&(mean_df['n_pulse']==n_pulse)&(mean_df['n_channel']==n_channel), 'Normalized collected charge'] = mean_df.loc[(mean_df['#']==device)&(mean_df['n_pulse']==n_pulse)&(mean_df['n_channel']==n_channel), 'Collected charge (V s)']
 			mean_df.loc[(mean_df['#']==device)&(mean_df['n_pulse']==n_pulse)&(mean_df['n_channel']==n_channel), 'Normalized collected charge'] -= np.nanmin(mean_df.loc[(mean_df['#']==device)&(mean_df['n_pulse']==n_pulse)&(mean_df['n_channel']==n_channel), 'Normalized collected charge'])
