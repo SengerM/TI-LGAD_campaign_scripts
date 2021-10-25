@@ -30,13 +30,18 @@ def tag_left_right_pad(data_df):
 			return {channel: 'right', list(channels-{channel})[0]: 'left'}
 
 def read_measured_data_from(measurement_name: str):
+	"""Reads the data from a 1D scan and returns a dataframe. The dataframe is returned "intact" in the sense that nothing is done, except that a column is added indicating the measurement name."""
 	for scan_script_name in ['linear_scan_many_triggers_per_point','1D_scan', 'scan_1D']:
 		try: # First try to read feather as it is much faster.
-			return pandas.read_feather(path_to_base_TI_LGAD/Path('measurements_data')/Path(measurement_name)/Path(scan_script_name)/Path('measured_data.fd'))
+			df = pandas.read_feather(path_to_base_TI_LGAD/Path('measurements_data')/Path(measurement_name)/Path(scan_script_name)/Path('measured_data.fd'))
+			df['Measurement name'] = measurement_name
+			return df
 		except FileNotFoundError:
 			pass
 		try:
-			return pandas.read_csv(path_to_base_TI_LGAD/Path('measurements_data')/Path(measurement_name)/Path(scan_script_name)/Path('measured_data.csv'))
+			df = pandas.read_csv(path_to_base_TI_LGAD/Path('measurements_data')/Path(measurement_name)/Path(scan_script_name)/Path('measured_data.csv'))
+			df['Measurement name'] = measurement_name
+			return df
 		except FileNotFoundError:
 			pass
 	raise FileNotFoundError(f'Cannot find measured data for measurement {repr(measurement_name)}.')
@@ -69,3 +74,5 @@ def pre_process_raw_data(data_df):
 	data_df = data_df.merge(distances_df, left_index=True, right_index=True)
 	data_df = data_df.append(data_df, ignore_index=True)
 	return data_df
+if __name__ == '__main__':
+	df = read_measured_data_from('20211024033857_#77_1DScan_88V')
