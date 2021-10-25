@@ -34,9 +34,12 @@ def tag_left_right_pad(data_df):
 	right_data = data_df.loc[(data_df['n_position']>data_df['n_position'].mean())]
 	for channel in channels:
 		if left_data.loc[left_data['n_channel']==channel, 'Collected charge (V s)'].mean(skipna=True) > left_data.loc[~(left_data['n_channel']==channel), 'Collected charge (V s)'].mean(skipna=True):
-			return {channel: 'left', list(channels-{channel})[0]: 'right'}
+			mapping = {channel: 'left', list(channels-{channel})[0]: 'right'}
 		else:
-			return {channel: 'right', list(channels-{channel})[0]: 'left'}
+			mapping = {channel: 'right', list(channels-{channel})[0]: 'left'}
+	for n_channel in set(data_df['n_channel']):
+		data_df.loc[data_df['n_channel']==n_channel, 'Pad'] = mapping[n_channel]
+	return data_df
 
 def read_measured_data_from(measurement_name: str):
 	"""Reads the data from a 1D scan and returns a dataframe. The dataframe is returned "intact" in the sense that nothing is done, except that a column is added indicating the measurement name."""
