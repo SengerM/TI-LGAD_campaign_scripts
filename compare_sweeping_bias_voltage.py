@@ -34,9 +34,13 @@ for measurement_name in names_of_measurements_with_data_list:
 	this_measurement_data['Distance - offset by linear interpolation (m)'] = this_measurement_data['Distance (m)'] - this_measurement_data['Distance offset by linear interpolation (m)']
 	measured_data = measured_data.append(this_measurement_data)
 
-columns_to_group_by = ['Measurement name','Device','Pad','n_channel','n_pulse','Laser DAC','n_position']
-averaged_data_df = measured_data.groupby(by = columns_to_group_by).mean()
-averaged_data_df = averaged_data_df.reset_index()
+columns_to_group_by = ['Measurement name','Device','Pad','n_channel','n_pulse','n_position']
+averaged_data_df = pandas.DataFrame()
+for measurement_name in set(measured_data['Measurement name']):
+	averaged_data_df = averaged_data_df.append(
+		utils.calculate_mean_measured_values_at_each_position(measured_data[measured_data['Measurement name']==measurement_name], by=columns_to_group_by),
+		ignore_index = True,
+	)
 
 for y in {'Normalized collected charge','Collected charge (V s)'}:
 	fig = px.line(
@@ -48,5 +52,19 @@ for y in {'Normalized collected charge','Collected charge (V s)'}:
 		markers = True,
 		color_discrete_sequence = px.colors.qualitative.D3,
 	)
-	# ~ fig.update_layout(legend_orientation="h")
 	fig.show()
+
+left_mas_right_df = averaged_data_df.groupby(by = ['Measurement name','Set bias voltage (V)','Device','n_pulse','Laser DAC','n_position']).sum()
+left_mas_right_df = left_mas_right_df.reset_index()
+fig = utils.line(
+	data_frame = left_mas_right_df.loc[left_mas_right_df['n_pulse']==1],
+	x = 'Distance - offset by linear interpolation (m)',
+	y = 'Normalized collected charge',
+	error_y = 'Normalized collected charge std',
+	error_y_mode = 'band',
+	color = 'Device',
+	symbol = 'Set bias voltage (V)',
+	markers = True,
+	color_discrete_sequence = px.colors.qualitative.D3,
+)
+fig.show()
