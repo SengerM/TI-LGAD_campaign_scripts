@@ -16,7 +16,7 @@ def read_devices_sheet():
 	)
 	return df.loc[:, ~df.columns.str.contains('^Unnamed')].set_index('#')
 
-def _check_df_is_from_single_1D_scan(df):
+def check_df_is_from_single_1D_scan(df):
 	"""If df contains data that looks like that from a single 1D scan of one device, this function does nothing. Otherwise, it will rise ValueError."""
 	from measurements_table import retrieve_measurement_type # Importing here to avoid circular import.
 	if len(set(df['Measurement name'])) != 1:
@@ -27,7 +27,7 @@ def _check_df_is_from_single_1D_scan(df):
 
 def tag_left_right_pad(data_df):
 	"""Given a data_df with data from a single 1D scan of two pads of a device, this function adds a column `Pad` indicating "left" or "right"."""
-	_check_df_is_from_single_1D_scan(data_df)
+	check_df_is_from_single_1D_scan(data_df)
 	channels = set(data_df['n_channel'])
 	if len(channels) != 2:
 		raise ValueError(f'`data_df` contains data concerning more than two channels. I can only tag left and right pads for two channels data.')
@@ -69,7 +69,7 @@ def calculate_1D_scan_distance(positions):
 	return [0] + list(np.cumsum((np.diff(positions, axis=0)**2).sum(axis=1)**.5))
 
 def calculate_1D_scan_distance_from_dataframe(df):
-	_check_df_is_from_single_1D_scan(df)
+	check_df_is_from_single_1D_scan(df)
 	x = df.groupby('n_position').mean()[f'x (m)']
 	y = df.groupby('n_position').mean()[f'y (m)']
 	z = df.groupby('n_position').mean()[f'z (m)']
@@ -79,7 +79,7 @@ def calculate_1D_scan_distance_from_dataframe(df):
 
 def calculate_normalized_collected_charge(df):
 	"""df must be the dataframe from a single 1D scan."""
-	_check_df_is_from_single_1D_scan(df)
+	check_df_is_from_single_1D_scan(df)
 	
 	df['Normalized collected charge'] = df['Collected charge (V s)']
 	mean_df = df.groupby(by = ['n_channel','n_pulse','n_position']).mean()
@@ -98,7 +98,7 @@ def calculate_normalized_collected_charge(df):
 
 def calculate_distance_offset(df):
 	"""Given data from a 1D scan from two complete pixels (i.e. scanning from metal→silicon pix 1→silicon pix 2→metal) this function calculates (and applies) the offset in the `distance` column such that the edges of each metal→silicon and silicon→metal transitions are centered at 50 % of the normalized charge."""
-	_check_df_is_from_single_1D_scan(df)
+	check_df_is_from_single_1D_scan(df)
 	
 	if 'Normalized collected charge' not in df.columns:
 		df = calculate_normalized_collected_charge(df)
@@ -131,7 +131,7 @@ def calculate_distance_offset(df):
 	
 def pre_process_raw_data(data_df):
 	"""Given data from a single device, this function performs many "common things" such as calculating the distance, adding the "left pad" or "right pad", etc."""
-	_check_df_is_from_single_1D_scan(data_df)
+	check_df_is_from_single_1D_scan(data_df)
 	for channel, pad in tag_left_right_pad(data_df).items():
 		data_df.loc[data_df['n_channel']==channel, 'Pad'] = pad
 	distances_df = calculate_1D_scan_distance_from_dataframe(data_df)
