@@ -96,7 +96,7 @@ def calculate_normalized_collected_charge(df):
 			df.loc[(df['n_pulse']==n_pulse)&(df['n_channel']==n_channel), 'Normalized collected charge'] /= scale_factor
 	return df
 
-def calculate_distance_offset(df):
+def calculate_distance_offset_by_linear_interpolation(df):
 	"""Given data from a 1D scan from two complete pixels (i.e. scanning from metal→silicon pix 1→silicon pix 2→metal) this function calculates (and applies) the offset in the `distance` column such that the edges of each metal→silicon and silicon→metal transitions are centered at 50 % of the normalized charge."""
 	check_df_is_from_single_1D_scan(df)
 	
