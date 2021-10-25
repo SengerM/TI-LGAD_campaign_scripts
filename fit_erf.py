@@ -98,12 +98,14 @@ def script_core(measurement_name: str):
 	fig.write_html(str(bureaucrat.processed_data_dir_path/Path(f'fit.html')), include_plotlyjs = 'cdn')
 	
 if __name__ == '__main__':
-	measurements_to_process = [
-		'20211025040241_#65_1DScan_99V',
-		'20211025011141_#65_1DScan_88V',
-		'20211024221940_#65_1DScan_77V',
-		'20211024192714_#65_1DScan_66V',
-		'20211024163129_#65_1DScan_55V',
-	]
-	for measurement in measurements_to_process:
-		script_core(measurement)
+	import measurements_table as mt
+	measurements_table_df = mt.create_measurements_table()
+	for measurement in measurements_table_df.index:
+		if mt.retrieve_measurement_type(measurement) == 'scan 1D':
+			if (utils.path_to_measurements_directory/Path(measurement)/Path('fit_erf')).is_dir():
+				continue
+			print(f'Processing {repr(measurement)}...')
+			try:
+				script_core(measurement)
+			except Exception as e:
+				print(f'Cannot fit_erf to measurement {repr(measurement)}, reason: {repr(e)}.')
