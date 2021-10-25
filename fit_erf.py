@@ -8,8 +8,11 @@ import plotly.express as px
 import plotly.graph_objects as go
 import numpy as np
 
-def metal_silicon_transition_model_function(x, y_scale, laser_sigma, x_offset, y_offset):
+def metal_silicon_transition_model_function_left_pad(x, y_scale, laser_sigma, x_offset, y_offset):
 	return y_scale*special.erf((x-x_offset)/laser_sigma*2**.5) + y_offset
+
+def metal_silicon_transition_model_function_right_pad(x, y_scale, laser_sigma, x_offset, y_offset):
+	return metal_silicon_transition_model_function_left_pad(-x, y_scale, laser_sigma, -x_offset, y_offset)
 
 def fit_erf(df, windows_size=130e-6):
 	"""Given a df with data from a single 1D scan, this function fits an erf (convolution of Gaussian and step) to each metal-silicon interface. Returns the fit result object by lmfit, one for each pad (left and right)."""
@@ -24,22 +27,26 @@ def fit_erf(df, windows_size=130e-6):
 	df = df.loc[df['Normalized collected charge'].notna()] # Drop rows that have NaN values in the relevant columns.
 	
 	fit_results = {}
-	fit_model = Model(metal_silicon_transition_model_function)
+	fit_model_left_pad = Model(metal_silicon_transition_model_function_left_pad)
+	fit_model_right_pad = Model(metal_silicon_transition_model_function_right_pad)
 	for pad in set(df['Pad']):
 		this_pad_df = df.loc[df['Pad']==pad]
-		this_pad_df['Distance (m)'] -= this_pad_df['Distance (m)'].mean()
 		if pad == 'left':
-			x_data_for_fit = this_pad_df.loc[this_pad_df['Distance (m)']<-windows_size/2, 'Distance (m)']
-			y_data_for_fit = this_pad_df.loc[this_pad_df['Distance (m)']<-windows_size/2, 'Normalized collected charge']
+			x_data_for_fit = this_pad_df.loc[this_pad_df['Distance (m)']<this_pad_df['Distance (m)'].mean()-windows_size/2, 'Distance (m)']
+			y_data_for_fit = this_pad_df.loc[this_pad_df['Distance (m)']<this_pad_df['Distance (m)'].mean()-windows_size/2, 'Normalized collected charge']
+			fit_model = fit_model_left_pad
 		elif pad == 'right':
-			x_data_for_fit = -this_pad_df.loc[this_pad_df['Distance (m)']>windows_size/2, 'Distance (m)']
-			y_data_for_fit = this_pad_df.loc[this_pad_df['Distance (m)']>windows_size/2, 'Normalized collected charge']
+			x_data_for_fit = this_pad_df.loc[this_pad_df['Distance (m)']>this_pad_df['Distance (m)'].mean()+windows_size/2, 'Distance (m)']
+			y_data_for_fit = this_pad_df.loc[this_pad_df['Distance (m)']>this_pad_df['Distance (m)'].mean()+windows_size/2, 'Normalized collected charge']
+			fit_model = fit_model_right_pad
 		parameters = fit_model.make_params(
 			laser_sigma = 10e-6,
-			x_offset = -windows_size, # Transition metal→silicon in the left pad.
+			x_offset = this_pad_df['Distance (m)'].mean()-windows_size if pad=='left' else this_pad_df['Distance (m)'].mean()+windows_size, # Transition metal→silicon in the left pad.
 			y_scale = 1/2,
 			y_offset = 1/2,
 		)
+		parameters['y_scale'].set(min=.1, max=.9)
+		parameters['y_offset'].set(min=.1, max=.9)
 		fit_results[pad] = fit_model.fit(y_data_for_fit, parameters, x=x_data_for_fit)
 	return fit_results
 
@@ -51,19 +58,16 @@ def script_core(measurement_name: str):
 	)
 	
 	measured_data_df = utils.read_and_pre_process_1D_scan_data(measurement_name)
-	print(measured_data_df)
 	
 	WINDOWS_SIZE = 130e-6
 	
 	fit_results = fit_erf(measured_data_df, windows_size=WINDOWS_SIZE)
-	results = pandas.DataFrame(columns = ['Pad','Laser sigma (m)', 'Metal-silicon distance from center (m)'])
+	results = pandas.DataFrame(columns = ['Pad'])
 	results.set_index('Pad', inplace=True)
 	for pad in fit_results:
 		results.loc[pad,'Laser sigma (m)'] = fit_results[pad].params['laser_sigma'].value
-		results.loc[pad,'Metal-silicon distance from center (m)'] = (fit_results[pad].params['x_offset'].value**2)**.5
+		results.loc[pad,'Metal-silicon distance (m)'] = fit_results[pad].params['x_offset'].value
 	results.to_csv(bureaucrat.processed_data_dir_path/Path('fit_results.csv'))
-	
-	measured_data_df['Distance (m)'] -= measured_data_df['Distance (m)'].mean()
 	
 	fig = utils.line(
 		data_frame = utils.calculate_mean_measured_values_at_each_position(measured_data_df, by=['n_position','Pad']),
@@ -76,29 +80,28 @@ def script_core(measurement_name: str):
 	)
 	for pad in results.index:
 		if pad == 'left':
-			df = measured_data_df.loc[measured_data_df['Distance (m)']<-WINDOWS_SIZE/2,'Distance (m)']
+			df = measured_data_df.loc[measured_data_df['Distance (m)']<measured_data_df['Distance (m)'].mean()-WINDOWS_SIZE/2,'Distance (m)']
 		else:
-			df = measured_data_df.loc[measured_data_df['Distance (m)']>WINDOWS_SIZE/2,'Distance (m)']
+			df = measured_data_df.loc[measured_data_df['Distance (m)']>measured_data_df['Distance (m)'].mean()+WINDOWS_SIZE/2,'Distance (m)']
 		x = np.linspace(min(df), max(df), 99)
 		fig.add_trace(
 			go.Scatter(
 				x = x,
-				y = fit_results[pad].eval(params=fit_results[pad].params, x = x if pad == 'left' else -x),
+				y = fit_results[pad].eval(params=fit_results[pad].params, x = x),
 				mode = 'lines',
 				name = f'Fit for {pad} pad',
 				line = dict(color='black', dash='dash'),
 			)
 		)
 	fig.write_html(str(bureaucrat.processed_data_dir_path/Path(f'fit.html')), include_plotlyjs = 'cdn')
-	print(measured_data_df)
 	
 if __name__ == '__main__':
 	measurements_to_process = [
 		'20211025040241_#65_1DScan_99V',
-		# ~ '20211025011141_#65_1DScan_88V',
-		# ~ '20211024221940_#65_1DScan_77V',
-		# ~ '20211024192714_#65_1DScan_66V',
-		# ~ '20211024163129_#65_1DScan_55V',
+		'20211025011141_#65_1DScan_88V',
+		'20211024221940_#65_1DScan_77V',
+		'20211024192714_#65_1DScan_66V',
+		'20211024163129_#65_1DScan_55V',
 	]
 	for measurement in measurements_to_process:
 		script_core(measurement)
