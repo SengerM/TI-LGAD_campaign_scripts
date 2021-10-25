@@ -109,7 +109,8 @@ def calculate_distance_offset(df):
 	mean_df = mean_df.reset_index()
 	
 	mean_df = mean_df.loc[mean_df['n_pulse']==1] # Will use only pulse 1 for this.
-	mean_df['Distance (m)'] -= mean_df['Distance (m)'].mean()
+	mean_distance = mean_df['Distance (m)'].mean()
+	mean_df['Distance (m)'] -= mean_distance
 	metal_to_silicon_transition_distance = {}
 	for pad in sorted(set(mean_df['Pad'])): # 'left' or 'right'
 		if pad == 'left':
@@ -124,7 +125,8 @@ def calculate_distance_offset(df):
 			)
 		metal_to_silicon_transition_distance[pad] = distance_vs_normalized_collected_charge(.5) # It is the distance in which the normalized collected charge is 0.5
 	offset = np.mean(list(metal_to_silicon_transition_distance.values()))
-	df['Distance (m)'] -= offset
+	df['Subtracted distance offset (m)'] = offset + mean_distance
+	df['Distance (m)'] -= offset + mean_distance
 	return df
 	
 def pre_process_raw_data(data_df):
