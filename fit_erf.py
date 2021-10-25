@@ -17,8 +17,6 @@ def fit_erf(df, windows_size=130e-6):
 	
 	if 'Pad' not in df.columns:
 		df = utils.tag_left_right_pad(df)
-	if 'Subtracted distance offset (m)' not in df.columns:
-		df = utils.calculate_distance_offset_by_linear_interpolation(df)
 	if 'Normalized collected charge' not in df.columns:
 		df = utils.calculate_normalized_collected_charge(df)
 	df = df.loc[df['n_pulse']==1] # Use only pulse 1 for this.
@@ -29,6 +27,7 @@ def fit_erf(df, windows_size=130e-6):
 	fit_model = Model(metal_silicon_transition_model_function)
 	for pad in set(df['Pad']):
 		this_pad_df = df.loc[df['Pad']==pad]
+		this_pad_df['Distance (m)'] -= this_pad_df['Distance (m)'].mean()
 		if pad == 'left':
 			x_data_for_fit = this_pad_df.loc[this_pad_df['Distance (m)']<-windows_size/2, 'Distance (m)']
 			y_data_for_fit = this_pad_df.loc[this_pad_df['Distance (m)']<-windows_size/2, 'Normalized collected charge']
@@ -52,6 +51,7 @@ def script_core(measurement_name: str):
 	)
 	
 	measured_data_df = utils.read_and_pre_process_1D_scan_data(measurement_name)
+	print(measured_data_df)
 	
 	WINDOWS_SIZE = 130e-6
 	
@@ -62,6 +62,8 @@ def script_core(measurement_name: str):
 		results.loc[pad,'Laser sigma (m)'] = fit_results[pad].params['laser_sigma'].value
 		results.loc[pad,'Metal-silicon distance from center (m)'] = (fit_results[pad].params['x_offset'].value**2)**.5
 	results.to_csv(bureaucrat.processed_data_dir_path/Path('fit_results.csv'))
+	
+	measured_data_df['Distance (m)'] -= measured_data_df['Distance (m)'].mean()
 	
 	fig = utils.line(
 		data_frame = utils.calculate_mean_measured_values_at_each_position(measured_data_df, by=['n_position','Pad']),
@@ -88,14 +90,15 @@ def script_core(measurement_name: str):
 			)
 		)
 	fig.write_html(str(bureaucrat.processed_data_dir_path/Path(f'fit.html')), include_plotlyjs = 'cdn')
-
+	print(measured_data_df)
+	
 if __name__ == '__main__':
 	measurements_to_process = [
 		'20211025040241_#65_1DScan_99V',
-		'20211025011141_#65_1DScan_88V',
-		'20211024221940_#65_1DScan_77V',
-		'20211024192714_#65_1DScan_66V',
-		'20211024163129_#65_1DScan_55V',
+		# ~ '20211025011141_#65_1DScan_88V',
+		# ~ '20211024221940_#65_1DScan_77V',
+		# ~ '20211024192714_#65_1DScan_66V',
+		# ~ '20211024163129_#65_1DScan_55V',
 	]
 	for measurement in measurements_to_process:
 		script_core(measurement)
