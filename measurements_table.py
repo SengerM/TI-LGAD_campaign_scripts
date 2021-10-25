@@ -87,7 +87,7 @@ def create_measurements_table():
 	measurements_df.set_index('Measurement name', inplace=True)
 	for measurement_name in measurements_df.index:
 		measurements_df.loc[measurement_name, 'When'] = datetime.datetime.strptime(measurement_name.split('_')[0], "%Y%m%d%H%M%S")
-		measurements_df.loc[measurement_name, 'Device measured'] = retrieve_device_name(measurement_name)
+		measurements_df.loc[measurement_name, 'Measured device'] = retrieve_device_name(measurement_name)
 		measurements_df.loc[measurement_name, 'Type'] = retrieve_measurement_type(measurement_name)
 		measurements_df.loc[measurement_name, 'Bias voltage (V)'] = retrieve_bias_voltage(measurement_name)
 		measurements_df.loc[measurement_name, 'Laser DAC'] = retrieve_laser_DAC(measurement_name)
