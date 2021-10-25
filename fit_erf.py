@@ -47,6 +47,7 @@ def fit_erf(df, windows_size=130e-6):
 		)
 		parameters['y_scale'].set(min=.1, max=.9)
 		parameters['y_offset'].set(min=.1, max=.9)
+		parameters['laser_sigma'].set(min=5e-6, max=22e-6)
 		fit_results[pad] = fit_model.fit(y_data_for_fit, parameters, x=x_data_for_fit)
 	return fit_results
 
@@ -100,12 +101,20 @@ def script_core(measurement_name: str):
 if __name__ == '__main__':
 	import measurements_table as mt
 	measurements_table_df = mt.create_measurements_table()
+	fit_results_df = pandas.DataFrame()
 	for measurement in measurements_table_df.index:
 		if mt.retrieve_measurement_type(measurement) == 'scan 1D':
-			if (utils.path_to_measurements_directory/Path(measurement)/Path('fit_erf')).is_dir():
-				continue
-			print(f'Processing {repr(measurement)}...')
+			if not (utils.path_to_measurements_directory/Path(measurement)/Path('fit_erf')).is_dir():
+				print(f'Processing {repr(measurement)}...')
+				try:
+					script_core(measurement)
+				except Exception as e:
+					print(f'Cannot fit_erf to measurement {repr(measurement)}, reason: {repr(e)}.')
 			try:
-				script_core(measurement)
-			except Exception as e:
-				print(f'Cannot fit_erf to measurement {repr(measurement)}, reason: {repr(e)}.')
+				this_measurement_data = pandas.read_csv(utils.path_to_measurements_directory/Path(measurement)/Path('fit_erf/fit_results.csv'))
+				this_measurement_data['Measurement name'] = measurement
+				fit_results_df = fit_results_df.append(this_measurement_data, ignore_index = True)
+			except:
+				pass
+	with pandas.option_context('display.max_rows', None):
+		print(fit_results_df)
