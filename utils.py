@@ -62,6 +62,31 @@ def calculate_1D_scan_distance_from_dataframe(df):
 	distances_df = pandas.DataFrame({'n_position': [i for i in range(len(set(df['n_position'])))], 'Distance (m)': calculate_1D_scan_distance(list(zip(x,y,z)))})
 	distances_df.set_index('n_position')
 	return distances_df
+
+def calculate_normalized_collected_charge(df):
+	"""df must be the dataframe from a single 1D scan."""
+	from measurements_table import retrieve_measurement_type # Importing here to avoid circular import.
+	
+	if len(set(df['Measurement name'])) != 1:
+		raise ValueError(f'`df` must contain data from a single measurement, but it seems to contain data from the following measurements: {set(df["Measurement name"])}.')
+	measurement_name = sorted(set(df['Measurement name']))[0]
+	if retrieve_measurement_type(measurement_name) != 'scan 1D':
+		raise ValueError(f'`df` must contain data from a "scan 1D" measurement, but the measurement {repr(measurement_name)} is of type {repr(retrieve_measurement_type(measurement_name))}.')
+	
+	df['Normalized collected charge'] = df['Collected charge (V s)']
+	mean_df = df.groupby(by = ['n_channel','n_pulse','n_position']).mean()
+	mean_df = mean_df.reset_index()
+	for n_pulse in sorted(set(mean_df['n_pulse'])):
+		for n_channel in sorted(set(mean_df['n_channel'])):
+			mean_df.loc[(mean_df['n_pulse']==n_pulse)&(mean_df['n_channel']==n_channel), 'Normalized collected charge'] = mean_df.loc[(mean_df['n_pulse']==n_pulse)&(mean_df['n_channel']==n_channel), 'Collected charge (V s)']
+			offset_factor = np.nanmin(mean_df.loc[(mean_df['n_pulse']==n_pulse)&(mean_df['n_channel']==n_channel), 'Normalized collected charge'])
+			mean_df.loc[(mean_df['n_pulse']==n_pulse)&(mean_df['n_channel']==n_channel), 'Normalized collected charge'] -= offset_factor
+			scale_factor = np.nanmax(mean_df.loc[(mean_df['n_pulse']==n_pulse)&(mean_df['n_channel']==n_channel), 'Normalized collected charge'])
+			mean_df.loc[(mean_df['n_pulse']==n_pulse)&(mean_df['n_channel']==n_channel), 'Normalized collected charge'] /= scale_factor
+			# Now I repeat for the df ---
+			df.loc[(df['n_pulse']==n_pulse)&(df['n_channel']==n_channel), 'Normalized collected charge'] -= offset_factor
+			df.loc[(df['n_pulse']==n_pulse)&(df['n_channel']==n_channel), 'Normalized collected charge'] /= scale_factor
+	return df
 	
 def pre_process_raw_data(data_df):
 	"""Given data from a single device, this function performs many "common things" such as calculating the distance, adding the "left pad" or "right pad", etc."""
@@ -74,5 +99,10 @@ def pre_process_raw_data(data_df):
 	data_df = data_df.merge(distances_df, left_index=True, right_index=True)
 	data_df = data_df.append(data_df, ignore_index=True)
 	return data_df
+
+def read_and_pre_process_1D_scan_data(measurement_name: str):
+	return pre_process_raw_data(read_measured_data_from(measurement_name))
+
 if __name__ == '__main__':
 	df = read_measured_data_from('20211024033857_#77_1DScan_88V')
+	calculate_normalized_collected_charge(df)
