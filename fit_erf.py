@@ -67,6 +67,8 @@ def script_core(measurement_name: str):
 	for pad in fit_results:
 		results.loc[pad,'Laser sigma (m)'] = fit_results[pad].params['laser_sigma'].value
 		results.loc[pad,'Metal-silicon distance (m)'] = fit_results[pad].params['x_offset'].value
+		results.loc[pad,'y_offset'] = fit_results[pad].params['y_offset'].value
+		results.loc[pad,'y_scale'] = fit_results[pad].params['y_scale'].value
 	results.to_csv(bureaucrat.processed_data_dir_path/Path('fit_results.csv'))
 	
 	fig = utils.line(
