@@ -4,6 +4,7 @@ import plotly.express as px
 import plotly.graph_objs as go
 import numpy as np
 from grafica.plotly_utils.utils import line as grafica_line
+from scipy import interpolate
 
 path_to_base_TI_LGAD = Path('/home/alf/cernbox/projects/4D_sensors/TI-LGAD_FBK_RD50_1')
 path_to_measurements_directory = path_to_base_TI_LGAD/Path('measurements_data')
@@ -93,6 +94,37 @@ def calculate_normalized_collected_charge(df):
 			# Now I repeat for the df ---
 			df.loc[(df['n_pulse']==n_pulse)&(df['n_channel']==n_channel), 'Normalized collected charge'] -= offset_factor
 			df.loc[(df['n_pulse']==n_pulse)&(df['n_channel']==n_channel), 'Normalized collected charge'] /= scale_factor
+	return df
+
+def calculate_distance_offset(df):
+	"""Given data from a 1D scan from two complete pixels (i.e. scanning from metal→silicon pix 1→silicon pix 2→metal) this function calculates (and applies) the offset in the `distance` column such that the edges of each metal→silicon and silicon→metal transitions are centered at 50 % of the normalized charge."""
+	_check_df_is_from_single_1D_scan(df)
+	
+	if 'Normalized collected charge' not in df.columns:
+		df = calculate_normalized_collected_charge(df)
+	if 'Pad' not in df.columns:
+		df = tag_left_right_pad(df)
+	
+	mean_df = df.groupby(by = ['n_channel','n_pulse','n_position','Pad']).mean()
+	mean_df = mean_df.reset_index()
+	
+	mean_df = mean_df.loc[mean_df['n_pulse']==1] # Will use only pulse 1 for this.
+	mean_df['Distance (m)'] -= mean_df['Distance (m)'].mean()
+	metal_to_silicon_transition_distance = {}
+	for pad in sorted(set(mean_df['Pad'])): # 'left' or 'right'
+		if pad == 'left':
+			distance_vs_normalized_collected_charge = interpolate.interp1d(
+				x = mean_df.loc[(mean_df['Pad']==pad)&(mean_df['Distance (m)']<-50e-6), 'Normalized collected charge'],
+				y = mean_df.loc[(mean_df['Pad']==pad)&(mean_df['Distance (m)']<-50e-6), 'Distance (m)'],
+			)
+		else:
+			distance_vs_normalized_collected_charge = interpolate.interp1d(
+				x = mean_df.loc[(mean_df['Pad']==pad)&(mean_df['n_pulse']==1)&(mean_df['Distance (m)']>50e-6), 'Normalized collected charge'],
+				y = mean_df.loc[(mean_df['Pad']==pad)&(mean_df['n_pulse']==1)&(mean_df['Distance (m)']>50e-6), 'Distance (m)'],
+			)
+		metal_to_silicon_transition_distance[pad] = distance_vs_normalized_collected_charge(.5) # It is the distance in which the normalized collected charge is 0.5
+	offset = np.mean(list(metal_to_silicon_transition_distance.values()))
+	df['Distance (m)'] -= offset
 	return df
 	
 def pre_process_raw_data(data_df):
