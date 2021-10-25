@@ -125,8 +125,7 @@ def calculate_distance_offset_by_linear_interpolation(df):
 			)
 		metal_to_silicon_transition_distance[pad] = distance_vs_normalized_collected_charge(.5) # It is the distance in which the normalized collected charge is 0.5
 	offset = np.mean(list(metal_to_silicon_transition_distance.values()))
-	df['Subtracted distance offset (m)'] = offset + mean_distance
-	df['Distance (m)'] -= offset + mean_distance
+	df['Distance offset by linear interpolation (m)'] = offset + mean_distance
 	return df
 	
 def pre_process_raw_data(data_df):
