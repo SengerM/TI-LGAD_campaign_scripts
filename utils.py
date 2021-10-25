@@ -142,3 +142,13 @@ def pre_process_raw_data(data_df):
 
 def read_and_pre_process_1D_scan_data(measurement_name: str):
 	return pre_process_raw_data(read_measured_data_from(measurement_name))
+
+def calculate_mean_measured_values_at_each_position(measured_data_df, by):
+	"""Given a data frame from a single measurement, returns a new df with the mean+-std at each position for all columns that are not within `by`."""
+	check_df_is_from_single_1D_scan(measured_data_df)
+	averaged_df = measured_data_df.groupby(by=by).mean()
+	std_df = measured_data_df.groupby(by=by).std()
+	for column in averaged_df.columns:
+		column_name = f"{column.split('(')[0]}std ({column.split('(')[-1]}" if '(' in column else f'{column} std'
+		averaged_df[column_name] = std_df[column]
+	return averaged_df.reset_index()
