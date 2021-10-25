@@ -15,9 +15,18 @@ def read_devices_sheet():
 	)
 	return df.loc[:, ~df.columns.str.contains('^Unnamed')].set_index('#')
 
+def _check_df_is_from_single_1D_scan(df):
+	"""If df contains data that looks like that from a single 1D scan of one device, this function does nothing. Otherwise, it will rise ValueError."""
+	from measurements_table import retrieve_measurement_type # Importing here to avoid circular import.
+	if len(set(df['Measurement name'])) != 1:
+		raise ValueError(f'`df` must contain data from a single measurement, but it seems to contain data from the following measurements: {set(df["Measurement name"])}.')
+	measurement_name = sorted(set(df['Measurement name']))[0]
+	if retrieve_measurement_type(measurement_name) != 'scan 1D':
+		raise ValueError(f'`df` must contain data from a "scan 1D" measurement, but the measurement {repr(measurement_name)} is of type {repr(retrieve_measurement_type(measurement_name))}.')
+
 def tag_left_right_pad(data_df):
-	if '#' in data_df and len(set(data_df['#'])) > 1:
-		raise ValueError(f'`data_df` must contain data from a single device, I have received a dataframe with data from {len(set(data_df["#"]))} devices.')
+	"""Given a data_df with data from a single 1D scan of two pads of a device, this function adds a column `Pad` indicating "left" or "right"."""
+	_check_df_is_from_single_1D_scan(data_df)
 	channels = set(data_df['n_channel'])
 	if len(channels) != 2:
 		raise ValueError(f'`data_df` contains data concerning more than two channels. I can only tag left and right pads for two channels data.')
@@ -56,6 +65,7 @@ def calculate_1D_scan_distance(positions):
 	return [0] + list(np.cumsum((np.diff(positions, axis=0)**2).sum(axis=1)**.5))
 
 def calculate_1D_scan_distance_from_dataframe(df):
+	_check_df_is_from_single_1D_scan(df)
 	x = df.groupby('n_position').mean()[f'x (m)']
 	y = df.groupby('n_position').mean()[f'y (m)']
 	z = df.groupby('n_position').mean()[f'z (m)']
@@ -65,13 +75,7 @@ def calculate_1D_scan_distance_from_dataframe(df):
 
 def calculate_normalized_collected_charge(df):
 	"""df must be the dataframe from a single 1D scan."""
-	from measurements_table import retrieve_measurement_type # Importing here to avoid circular import.
-	
-	if len(set(df['Measurement name'])) != 1:
-		raise ValueError(f'`df` must contain data from a single measurement, but it seems to contain data from the following measurements: {set(df["Measurement name"])}.')
-	measurement_name = sorted(set(df['Measurement name']))[0]
-	if retrieve_measurement_type(measurement_name) != 'scan 1D':
-		raise ValueError(f'`df` must contain data from a "scan 1D" measurement, but the measurement {repr(measurement_name)} is of type {repr(retrieve_measurement_type(measurement_name))}.')
+	_check_df_is_from_single_1D_scan(df)
 	
 	df['Normalized collected charge'] = df['Collected charge (V s)']
 	mean_df = df.groupby(by = ['n_channel','n_pulse','n_position']).mean()
@@ -90,8 +94,7 @@ def calculate_normalized_collected_charge(df):
 	
 def pre_process_raw_data(data_df):
 	"""Given data from a single device, this function performs many "common things" such as calculating the distance, adding the "left pad" or "right pad", etc."""
-	if '#' in data_df and len(set(data_df['#'])) > 1:
-		raise ValueError(f'`data_df` must contain data from a single device, I have received a dataframe with data from {len(set(data_df["#"]))} devices.')
+	_check_df_is_from_single_1D_scan(data_df)
 	for channel, pad in tag_left_right_pad(data_df).items():
 		data_df.loc[data_df['n_channel']==channel, 'Pad'] = pad
 	distances_df = calculate_1D_scan_distance_from_dataframe(data_df)
@@ -102,7 +105,3 @@ def pre_process_raw_data(data_df):
 
 def read_and_pre_process_1D_scan_data(measurement_name: str):
 	return pre_process_raw_data(read_measured_data_from(measurement_name))
-
-if __name__ == '__main__':
-	df = read_measured_data_from('20211024033857_#77_1DScan_88V')
-	calculate_normalized_collected_charge(df)
