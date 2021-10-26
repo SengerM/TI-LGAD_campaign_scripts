@@ -140,7 +140,12 @@ def pre_process_raw_data(data_df):
 	return data_df
 
 def read_and_pre_process_1D_scan_data(measurement_name: str):
-	return pre_process_raw_data(read_measured_data_from(measurement_name))
+	from measurements_table import create_measurements_table # Import here to avoid circular import error.
+	measurements_table_df = create_measurements_table()
+	df = pre_process_raw_data(read_measured_data_from(measurement_name))
+	df['Device'] = measurements_table_df.loc[measurement_name, 'Measured device']
+	df['Device specs'] = get_device_specs_string(measurements_table_df.loc[measurement_name, 'Measured device'])
+	return df
 
 def mean_std(df, by):
 	"""Groups by `by` (list of columns), calculates mean and std, and creates one column with mean and another with std for each column not present in `by`.
@@ -167,3 +172,8 @@ def mean_std(df, by):
 	mean_df = df.groupby(by=by).agg(['mean','std'])
 	mean_df.columns = [' '.join(col).strip() for col in mean_df.columns.values]
 	return mean_df.reset_index()
+
+def get_device_specs_string(device_name: str):
+	devices_sheet_df = read_devices_sheet()
+	device_name = int(device_name.replace('#',''))
+	return f'W{devices_sheet_df.loc[device_name,"wafer"]}-{devices_sheet_df.loc[device_name,"trench depth"]}-{devices_sheet_df.loc[device_name,"trenches"]}-{devices_sheet_df.loc[device_name,"trench process"]}-{devices_sheet_df.loc[device_name,"pixel border"]}-{devices_sheet_df.loc[device_name,"contact type"]}'
