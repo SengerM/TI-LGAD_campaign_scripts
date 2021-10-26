@@ -80,6 +80,7 @@ def script_core(measurement_name: str):
 		error_y = 'Normalized collected charge std',
 		error_y_mode = 'bands',
 		markers = '.',
+		title = f'Laser profile check<br><sup>Measurement: {bureaucrat.measurement_name}</sup>',
 	)
 	for pad in results.index:
 		if pad == 'left':
@@ -92,7 +93,7 @@ def script_core(measurement_name: str):
 				x = x,
 				y = fit_results[pad].eval(params=fit_results[pad].params, x = x),
 				mode = 'lines',
-				name = f'Fit for {pad} pad',
+				name = f'Fit erf {pad} pad, σ<sub>laser</sub>={fit_results[pad].params["laser_sigma"].value*1e6:.1f} µm',
 				line = dict(color='black', dash='dash'),
 			)
 		)
@@ -102,7 +103,7 @@ if __name__ == '__main__':
 	import measurements_table as mt
 	measurements_table_df = mt.create_measurements_table()
 	fit_results_df = pandas.DataFrame()
-	for measurement in measurements_table_df.index:
+	for measurement in sorted(measurements_table_df.index)[::-1]:
 		if mt.retrieve_measurement_type(measurement) == 'scan 1D':
 			if not (utils.path_to_measurements_directory/Path(measurement)/Path('fit_erf')).is_dir():
 				print(f'Processing {repr(measurement)}...')
