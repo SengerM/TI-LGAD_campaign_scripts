@@ -73,12 +73,12 @@ def script_core(measurement_name: str):
 	results.to_csv(bureaucrat.processed_data_dir_path/Path('fit_results.csv'))
 	
 	fig = utils.line(
-		data_frame = utils.calculate_mean_measured_values_at_each_position(measured_data_df, by=['n_position','Pad']),
+		data_frame = utils.mean_std(measured_data_df, by=['n_position','Pad', 'Distance (m)']),
 		x = 'Distance (m)',
-		y = 'Normalized collected charge',
-		color = 'Pad',
+		y = 'Normalized collected charge mean',
 		error_y = 'Normalized collected charge std',
-		error_y_mode = 'bands',
+		error_y_mode = 'band',
+		color = 'Pad',
 		markers = '.',
 		title = f'Laser profile check<br><sup>Measurement: {bureaucrat.measurement_name}</sup>',
 	)
