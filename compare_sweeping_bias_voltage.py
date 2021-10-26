@@ -42,6 +42,7 @@ for measurement_name in set(measured_data['Measurement name']):
 		ignore_index = True,
 	)
 
+figs = []
 for y in {'Normalized collected charge','Collected charge (V s)'}:
 	fig = px.line(
 		data_frame = averaged_data_df.loc[averaged_data_df['n_pulse']==1],
@@ -51,10 +52,11 @@ for y in {'Normalized collected charge','Collected charge (V s)'}:
 		symbol = 'Set bias voltage (V)',
 		markers = True,
 		color_discrete_sequence = px.colors.qualitative.D3,
+		title = y.split('(')[0],
 	)
-	fig.show()
+	figs.append(fig)
 
-left_mas_right_df = averaged_data_df.groupby(by = ['Measurement name','Set bias voltage (V)','Device','n_pulse','Laser DAC','n_position']).sum()
+left_mas_right_df = averaged_data_df.groupby(by = ['Measurement name','Set bias voltage (V)','Device','n_pulse','Laser DAC','n_position','Distance - offset by linear interpolation (m)']).sum()
 left_mas_right_df = left_mas_right_df.reset_index()
 fig = utils.line(
 	data_frame = left_mas_right_df.loc[left_mas_right_df['n_pulse']==1],
@@ -66,5 +68,20 @@ fig = utils.line(
 	symbol = 'Set bias voltage (V)',
 	markers = True,
 	color_discrete_sequence = px.colors.qualitative.D3,
+	title = 'Left pad + right pad',
 )
-fig.show()
+figs.append(fig)
+
+for idx,fig in enumerate(figs):
+	for x in [-125e-6, 0, 125e-6]:
+		fig.add_shape(type="line",
+			yref = "paper",
+			x0 = x,
+			y0 = 0,
+			x1 = x,
+			y1 = 1,
+			line = dict(
+				color = 'black',
+				dash = 'dash',
+			),
+		)
