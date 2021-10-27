@@ -178,7 +178,7 @@ def get_device_specs_string(device_name: str):
 	device_name = int(device_name.replace('#',''))
 	return f'W{devices_sheet_df.loc[device_name,"wafer"]}-{devices_sheet_df.loc[device_name,"trench depth"]}-{devices_sheet_df.loc[device_name,"trenches"]}-{devices_sheet_df.loc[device_name,"trench process"]}-{devices_sheet_df.loc[device_name,"pixel border"]}-{devices_sheet_df.loc[device_name,"contact type"]}'
 
-def calculate_interpad_distance_by_linear_interpolation_using_normalized_collected_charge(measured_data_df, threshold_percent=50, window_size=125e-6):
+def calculate_interpixel_distance_by_linear_interpolation_using_normalized_collected_charge(measured_data_df, threshold_percent=50, window_size=125e-6):
 	"""Receives a dataframe with the data from a single 1D scan, returns a float number."""
 	check_df_is_from_single_1D_scan(measured_data_df)
 	if 'Normalized collected charge' not in measured_data_df.columns:
@@ -199,7 +199,12 @@ def calculate_interpad_distance_by_linear_interpolation_using_normalized_collect
 			y = df.loc[rows,'Distance (m)'],
 		)
 		threshold_distance_for_each_pad[pad] = distance_vs_charge_linear_interpolation(threshold_percent/100)
-	return threshold_distance_for_each_pad['right']-threshold_distance_for_each_pad['left']
+	return {
+		'Inter-pixel distance (m)': threshold_distance_for_each_pad['right']-threshold_distance_for_each_pad['left'],
+		'Threshold (%)': threshold_percent,
+		'Left pad distance (m)': threshold_distance_for_each_pad['left'],
+		'Right pad distance (m)': threshold_distance_for_each_pad['right'],
+	}
 
 if __name__ == '__main__':
 	data_df = read_and_pre_process_1D_scan_data('20211026023917_#65_1DScan_155V')
