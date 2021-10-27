@@ -78,22 +78,23 @@ def calculate_1D_scan_distance_from_dataframe(df):
 	return distances_df
 
 def calculate_normalized_collected_charge(df, window_size=125e-6, laser_sigma=9e-6):
-	"""df must be the dataframe from a single 1D scan."""
+	"""df must be the dataframe from a single 1D scan. `window_size` and `laser_sigma` are used to know where we expect zero signal and where we expect full signal."""
 	check_df_is_from_single_1D_scan(df)
 	
+	if 'Pad' not in df.columns:
+		df = pre_process_raw_data(df)
 	df['Normalized collected charge'] = df['Collected charge (V s)']
-	mean_df = df.groupby(by = ['n_channel','n_pulse','n_position']).mean()
-	mean_df = mean_df.reset_index()
-	for n_pulse in sorted(set(mean_df['n_pulse'])):
-		for n_channel in sorted(set(mean_df['n_channel'])):
-			mean_df.loc[(mean_df['n_pulse']==n_pulse)&(mean_df['n_channel']==n_channel), 'Normalized collected charge'] = mean_df.loc[(mean_df['n_pulse']==n_pulse)&(mean_df['n_channel']==n_channel), 'Collected charge (V s)']
-			offset_factor = np.nanmin(mean_df.loc[(mean_df['n_pulse']==n_pulse)&(mean_df['n_channel']==n_channel), 'Normalized collected charge'])
-			mean_df.loc[(mean_df['n_pulse']==n_pulse)&(mean_df['n_channel']==n_channel), 'Normalized collected charge'] -= offset_factor
-			scale_factor = np.nanmax(mean_df.loc[(mean_df['n_pulse']==n_pulse)&(mean_df['n_channel']==n_channel), 'Normalized collected charge'])
-			mean_df.loc[(mean_df['n_pulse']==n_pulse)&(mean_df['n_channel']==n_channel), 'Normalized collected charge'] /= scale_factor
-			# Now I repeat for the df ---
-			df.loc[(df['n_pulse']==n_pulse)&(df['n_channel']==n_channel), 'Normalized collected charge'] -= offset_factor
-			df.loc[(df['n_pulse']==n_pulse)&(df['n_channel']==n_channel), 'Normalized collected charge'] /= scale_factor
+	for n_pulse in sorted(set(df['n_pulse'])):
+		for pad in {'left','right'}:
+			rows_where_I_expect_no_signal_i_e_where_there_is_metal = (df['Distance (m)'] < df['Distance (m)'].mean() - window_size - 2*laser_sigma) | (df['Distance (m)'] > df['Distance (m)'].mean() + window_size + 2*laser_sigma)
+			if pad == 'left':
+				rows_where_I_expect_full_signal_i_e_where_there_is_silicon = (df['Distance (m)'] > df['Distance (m)'].mean() - window_size + 2*laser_sigma) & (df['Distance (m)'] < df['Distance (m)'].mean() - 2*laser_sigma)
+			elif pad == 'right':
+				rows_where_I_expect_full_signal_i_e_where_there_is_silicon = (df['Distance (m)'] < df['Distance (m)'].mean() + window_size - 2*laser_sigma) & (df['Distance (m)'] > df['Distance (m)'].mean() + 2*laser_sigma)
+			offset_to_subtract = df.loc[rows_where_I_expect_no_signal_i_e_where_there_is_metal&(df['Pad']==pad)&(df['n_pulse']==n_pulse),'Normalized collected charge'].mean()
+			df.loc[(df['Pad']==pad)&(df['n_pulse']==n_pulse),'Normalized collected charge'] -= offset_to_subtract
+			scale_factor = df.loc[rows_where_I_expect_full_signal_i_e_where_there_is_silicon&(df['Pad']==pad)&(df['n_pulse']==n_pulse),'Normalized collected charge'].mean()
+			df.loc[(df['Pad']==pad)&(df['n_pulse']==n_pulse),'Normalized collected charge'] /= scale_factor
 	return df
 
 def calculate_distance_offset_by_linear_interpolation(df):
@@ -230,5 +231,12 @@ def calculate_interpixel_distance_by_linear_interpolation_using_normalized_colle
 
 if __name__ == '__main__':
 	data_df = read_and_pre_process_1D_scan_data('20211026023917_#65_1DScan_155V')
-	print(calculate_interpad_distance_by_linear_interpolation_using_normalized_collected_charge(data_df))
-	
+	data_df = calculate_normalized_collected_charge(data_df)
+	line(
+		data_frame = mean_std(data_df, by=['Distance (m)','Pad','n_pulse']).query('n_pulse==2'),
+		x = 'Distance (m)',
+		y = 'Normalized collected charge mean',
+		error_y = 'Normalized collected charge std',
+		error_y_mode = 'band',
+		color = 'Pad',
+	).show()
