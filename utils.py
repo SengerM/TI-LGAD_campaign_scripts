@@ -77,7 +77,7 @@ def calculate_1D_scan_distance_from_dataframe(df):
 	distances_df.set_index('n_position')
 	return distances_df
 
-def calculate_normalized_collected_charge(df):
+def calculate_normalized_collected_charge(df, window_size=125e-6, laser_sigma=9e-6):
 	"""df must be the dataframe from a single 1D scan."""
 	check_df_is_from_single_1D_scan(df)
 	
@@ -177,3 +177,31 @@ def get_device_specs_string(device_name: str):
 	devices_sheet_df = read_devices_sheet()
 	device_name = int(device_name.replace('#',''))
 	return f'W{devices_sheet_df.loc[device_name,"wafer"]}-{devices_sheet_df.loc[device_name,"trench depth"]}-{devices_sheet_df.loc[device_name,"trenches"]}-{devices_sheet_df.loc[device_name,"trench process"]}-{devices_sheet_df.loc[device_name,"pixel border"]}-{devices_sheet_df.loc[device_name,"contact type"]}'
+
+def calculate_interpad_distance_by_linear_interpolation_using_normalized_collected_charge(measured_data_df, threshold_percent=50, window_size=125e-6):
+	"""Receives a dataframe with the data from a single 1D scan, returns a float number."""
+	check_df_is_from_single_1D_scan(measured_data_df)
+	if 'Normalized collected charge' not in measured_data_df.columns:
+		measured_data_df = calculate_normalized_collected_charge(measured_data_df)
+	df = measured_data_df[['n_position','n_pulse','n_trigger','n_channel','Normalized collected charge','Distance (m)','Pad']]
+	df = df.query('n_pulse==1') # Use only the first pulse.
+	df = mean_std(df, by=['Distance (m)','Pad','n_pulse','n_position'])
+	threshold_distance_for_each_pad = {}
+	for pad in set(df['Pad']):
+		if pad == 'left':
+			rows = (df['Distance (m)'] > df['Distance (m)'].mean() - window_size/2) & (df['Pad']==pad)
+		elif pad == 'right':
+			rows = (df['Distance (m)'] < df['Distance (m)'].mean() + window_size/2) & (df['Pad']==pad)
+		else:
+			raise ValueError(f'Received a dataframe with {repr(pad)} in the column "Pad", I dont know that this means... It is supposed to be either "left" or "right"...')
+		distance_vs_charge_linear_interpolation = interpolate.interp1d(
+			x = df.loc[rows,'Normalized collected charge mean'],
+			y = df.loc[rows,'Distance (m)'],
+		)
+		threshold_distance_for_each_pad[pad] = distance_vs_charge_linear_interpolation(threshold_percent/100)
+	return threshold_distance_for_each_pad['right']-threshold_distance_for_each_pad['left']
+
+if __name__ == '__main__':
+	data_df = read_and_pre_process_1D_scan_data('20211026023917_#65_1DScan_155V')
+	print(calculate_interpad_distance_by_linear_interpolation_using_normalized_collected_charge(data_df))
+	
