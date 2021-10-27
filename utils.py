@@ -144,7 +144,6 @@ def read_and_pre_process_1D_scan_data(measurement_name: str):
 	measurements_table_df = create_measurements_table()
 	df = pre_process_raw_data(read_measured_data_from(measurement_name))
 	df['Device'] = measurements_table_df.loc[measurement_name, 'Measured device']
-	df['Device specs'] = get_device_specs_string(measurements_table_df.loc[measurement_name, 'Measured device'])
 	return df
 
 def mean_std(df, by):
@@ -173,10 +172,33 @@ def mean_std(df, by):
 	mean_df.columns = [' '.join(col).strip() for col in mean_df.columns.values]
 	return mean_df.reset_index()
 
-def get_device_specs_string(device_name: str):
+def get_device_specs_string(device_name: str, humanize=False):
 	devices_sheet_df = read_devices_sheet()
 	device_name = int(device_name.replace('#',''))
-	return f'W{devices_sheet_df.loc[device_name,"wafer"]}-{devices_sheet_df.loc[device_name,"trench depth"]}-{devices_sheet_df.loc[device_name,"trenches"]}-{devices_sheet_df.loc[device_name,"trench process"]}-{devices_sheet_df.loc[device_name,"pixel border"]}-{devices_sheet_df.loc[device_name,"contact type"]}'
+	if humanize == False:
+		return f'W{devices_sheet_df.loc[device_name,"wafer"]}-{devices_sheet_df.loc[device_name,"trench depth"]}-{devices_sheet_df.loc[device_name,"trenches"]}-{devices_sheet_df.loc[device_name,"trench process"]}-{devices_sheet_df.loc[device_name,"pixel border"]}-{devices_sheet_df.loc[device_name,"contact type"]}'
+	else:
+		SEPARATOR_CHAR = ','
+		string = f'W{devices_sheet_df.loc[device_name,"wafer"]}'
+		string += SEPARATOR_CHAR
+		if devices_sheet_df.loc[device_name,"trench depth"] == 'D1':
+			string += 'shallow'
+		elif devices_sheet_df.loc[device_name,"trench depth"] == 'D2':
+			string += 'medium depth'
+		elif devices_sheet_df.loc[device_name,"trench depth"] == 'D3':
+			string += 'deep'
+		string += SEPARATOR_CHAR
+		if devices_sheet_df.loc[device_name,"trenches"] == 1:
+			string += '1 trench'
+		else:
+			string += '2 trenches'
+		string += SEPARATOR_CHAR
+		string += f'process {devices_sheet_df.loc[device_name,"trench process"]}'
+		string += SEPARATOR_CHAR
+		string += f'border {devices_sheet_df.loc[device_name,"pixel border"]}'
+		string += SEPARATOR_CHAR
+		string += f'contact {devices_sheet_df.loc[device_name,"contact type"]}'
+		return string
 
 def calculate_interpixel_distance_by_linear_interpolation_using_normalized_collected_charge(measured_data_df, threshold_percent=50, window_size=125e-6):
 	"""Receives a dataframe with the data from a single 1D scan, returns a float number."""
