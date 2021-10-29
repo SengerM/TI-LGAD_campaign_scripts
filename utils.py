@@ -137,7 +137,7 @@ def pre_process_raw_data(data_df):
 	distances_df = calculate_1D_scan_distance_from_dataframe(data_df)
 	data_df.set_index('n_position', inplace=True)
 	data_df = data_df.merge(distances_df, left_index=True, right_index=True)
-	data_df = data_df.append(data_df, ignore_index=True)
+	data_df.reset_index(inplace=True, drop=True)
 	return data_df
 
 def read_and_pre_process_1D_scan_data(measurement_name: str):
