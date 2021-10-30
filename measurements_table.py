@@ -95,6 +95,6 @@ def create_measurements_table():
 	return measurements_df
 
 if __name__ == '__main__':
-	with pandas.option_context('display.max_rows', None):  # more options can be specified also
-		print(create_measurements_table().sort_values(['Bias voltage (V)', 'Type', 'Measurement name']))
-	# ~ create_measurements_table().to_excel(utils.path_to_measurements_directory/Path('measurements_table.xlsx'))
+	fpath = Path('measurements_table.xlsx')
+	create_measurements_table().to_excel(fpath)
+	print(f'Measurements table was saved in {fpath.absolute()}')
