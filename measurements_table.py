@@ -23,7 +23,7 @@ def retrieve_measurement_type(measurement_name):
 	is_2D_map = any(pattern.lower() in measurement_name.lower() for pattern in {'2D_map','2DMap','2DScan'})
 	is_z_scan_to_find_focus = any(pattern.lower() in measurement_name.lower() for pattern in {'focus','z_scan'})
 	is_beta_scan = any(pattern.lower() in measurement_name.lower() for pattern in {'beta scan','betaScan','beta'})
-	is_IV_curve = 'IV' in measurement_name
+	is_IV_curve = 'IV' in measurement_name or (measurement_path/Path('IV_curve')).is_dir()
 	is_1D_scan_sweeping_bias_voltage = 'sweeping_bias_voltage' in measurement_name and 'scan_1D_sweeping_bias_voltage' in list_of_directories_within_this_measurement
 	is_laser_DAC_scan = any(pattern.lower() in measurement_name.lower() for pattern in {'laserDacScan'})
 	
