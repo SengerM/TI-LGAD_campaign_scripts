@@ -26,7 +26,7 @@ def check_df_is_from_single_1D_scan(df):
 		raise ValueError(f'`df` must contain data from a "scan 1D" measurement, but the measurement {repr(measurement_name)} is of type {repr(retrieve_measurement_type(measurement_name))}.')
 
 def tag_left_right_pad(data_df):
-	"""Given a data_df with data from a single 1D scan of two pads of a device, this function adds a column `Pad` indicating "left" or "right"."""
+	"""Given a data_df with data from a single 1D scan of two pads of a device, this function adds a new column indicating if the pad is "left" or "right"."""
 	check_df_is_from_single_1D_scan(data_df)
 	channels = set(data_df['n_channel'])
 	if len(channels) != 2:
@@ -38,9 +38,10 @@ def tag_left_right_pad(data_df):
 			mapping = {channel: 'left', list(channels-{channel})[0]: 'right'}
 		else:
 			mapping = {channel: 'right', list(channels-{channel})[0]: 'left'}
+	pad_df = pandas.DataFrame(index=data_df.index)
 	for n_channel in set(data_df['n_channel']):
-		data_df.loc[data_df['n_channel']==n_channel, 'Pad'] = mapping[n_channel]
-	return data_df
+		pad_df.loc[data_df['n_channel']==n_channel, 'Pad'] = mapping[n_channel]
+	data_df['Pad'] = pad_df
 
 def read_measured_data_from(measurement_name: str):
 	"""Reads the data from a 1D scan and returns a dataframe. The dataframe is returned "intact" in the sense that nothing is done, except that a column is added indicating the measurement name."""
@@ -74,8 +75,19 @@ def calculate_1D_scan_distance_from_dataframe(df):
 	y = df.groupby('n_position').mean()[f'y (m)']
 	z = df.groupby('n_position').mean()[f'z (m)']
 	distances_df = pandas.DataFrame({'n_position': [i for i in range(len(set(df['n_position'])))], 'Distance (m)': calculate_1D_scan_distance(list(zip(x,y,z)))})
-	distances_df.set_index('n_position')
-	return distances_df
+	return distances_df.set_index('n_position')
+
+def append_distance_column(df):
+	"""Given a data frame with data from a single 1D scan, this function calculates the distance in meters at each `n_position` and then appends a new column "Distance (m)" to it."""
+	check_df_is_from_single_1D_scan(df)
+	distance_df = calculate_1D_scan_distance_from_dataframe(df)
+	n_positions_df = pandas.DataFrame({'n_position': df['n_position']})
+	n_positions_df.set_index('n_position', inplace=True)
+	n_positions_df = n_positions_df.merge(distance_df, left_index=True, right_index=True)
+	df.reset_index(inplace=True)
+	df.set_index('n_position', inplace=True)
+	df['Distance (m)'] = n_positions_df
+	df.reset_index(inplace=True)
 
 def calculate_normalized_collected_charge(df, window_size=125e-6, laser_sigma=9e-6):
 	"""df must be the dataframe from a single 1D scan. `window_size` and `laser_sigma` are used to know where we expect zero signal and where we expect full signal."""
