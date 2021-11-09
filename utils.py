@@ -26,7 +26,7 @@ def check_df_is_from_single_1D_scan(df):
 		raise ValueError(f'`df` must contain data from a "scan 1D" measurement, but the measurement {repr(measurement_name)} is of type {repr(retrieve_measurement_type(measurement_name))}.')
 
 def tag_left_right_pad(data_df):
-	"""Given a data_df with data from a single 1D scan of two pads of a device, this function adds a column `Pad` indicating "left" or "right"."""
+	"""Given a data_df with data from a single 1D scan of two pads of a device, this function adds a new column indicating if the pad is "left" or "right"."""
 	check_df_is_from_single_1D_scan(data_df)
 	channels = set(data_df['n_channel'])
 	if len(channels) != 2:
@@ -38,9 +38,10 @@ def tag_left_right_pad(data_df):
 			mapping = {channel: 'left', list(channels-{channel})[0]: 'right'}
 		else:
 			mapping = {channel: 'right', list(channels-{channel})[0]: 'left'}
+	pad_df = pandas.DataFrame(index=data_df.index)
 	for n_channel in set(data_df['n_channel']):
-		data_df.loc[data_df['n_channel']==n_channel, 'Pad'] = mapping[n_channel]
-	return data_df
+		pad_df.loc[data_df['n_channel']==n_channel, 'Pad'] = mapping[n_channel]
+	data_df['Pad'] = pad_df
 
 def read_measured_data_from(measurement_name: str):
 	"""Reads the data from a 1D scan and returns a dataframe. The dataframe is returned "intact" in the sense that nothing is done, except that a column is added indicating the measurement name."""
@@ -74,16 +75,32 @@ def calculate_1D_scan_distance_from_dataframe(df):
 	y = df.groupby('n_position').mean()[f'y (m)']
 	z = df.groupby('n_position').mean()[f'z (m)']
 	distances_df = pandas.DataFrame({'n_position': [i for i in range(len(set(df['n_position'])))], 'Distance (m)': calculate_1D_scan_distance(list(zip(x,y,z)))})
-	distances_df.set_index('n_position')
-	return distances_df
+	return distances_df.set_index('n_position')
+
+def append_distance_column(df):
+	"""Given a data frame with data from a single 1D scan, this function calculates the distance in meters at each `n_position` and then appends a new column "Distance (m)" to it."""
+	check_df_is_from_single_1D_scan(df)
+	distance_df = calculate_1D_scan_distance_from_dataframe(df)
+	n_positions_df = pandas.DataFrame({'n_position': df['n_position']})
+	n_positions_df.set_index('n_position', inplace=True)
+	n_positions_df = n_positions_df.merge(distance_df, left_index=True, right_index=True)
+	df.reset_index(inplace=True)
+	df.set_index('n_position', inplace=True)
+	df['Distance (m)'] = n_positions_df
+	df.reset_index(inplace=True)
+	if 'index' in df.columns:
+		df.drop(columns='index', inplace=True)
 
 def calculate_normalized_collected_charge(df, window_size=125e-6, laser_sigma=9e-6):
-	"""df must be the dataframe from a single 1D scan. `window_size` and `laser_sigma` are used to know where we expect zero signal and where we expect full signal."""
+	"""df must be the dataframe from a single 1D scan. `window_size` and `laser_sigma` are used to know where we expect zero signal and where we expect full signal.
+	Return a single-column-dataframe containint the value of the normalized collected charge at each row."""
 	check_df_is_from_single_1D_scan(df)
-	
+	normalized_charge_df = pandas.DataFrame(index=df.index)
+	normalized_charge_df['Normalized collected charge'] = df['Collected charge (V s)'].copy()
 	if 'Pad' not in df.columns:
-		df = pre_process_raw_data(df)
-	df['Normalized collected charge'] = df['Collected charge (V s)']
+		raise RuntimeError(f'Before calling this function you have to call `tag_left_right_pad` function on your data frame.')
+	if 'Distance (m)' not in df.columns:
+		raise RuntimeError(f'Before calling this function you have to call `append_distance_column` function on your data frame.')
 	for n_pulse in sorted(set(df['n_pulse'])):
 		for pad in {'left','right'}:
 			rows_where_I_expect_no_signal_i_e_where_there_is_metal = (df['Distance (m)'] < df['Distance (m)'].mean() - window_size - 2*laser_sigma) | (df['Distance (m)'] > df['Distance (m)'].mean() + window_size + 2*laser_sigma)
@@ -91,20 +108,24 @@ def calculate_normalized_collected_charge(df, window_size=125e-6, laser_sigma=9e
 				rows_where_I_expect_full_signal_i_e_where_there_is_silicon = (df['Distance (m)'] > df['Distance (m)'].mean() - window_size + 2*laser_sigma) & (df['Distance (m)'] < df['Distance (m)'].mean() - 2*laser_sigma)
 			elif pad == 'right':
 				rows_where_I_expect_full_signal_i_e_where_there_is_silicon = (df['Distance (m)'] < df['Distance (m)'].mean() + window_size - 2*laser_sigma) & (df['Distance (m)'] > df['Distance (m)'].mean() + 2*laser_sigma)
-			offset_to_subtract = df.loc[rows_where_I_expect_no_signal_i_e_where_there_is_metal&(df['Pad']==pad)&(df['n_pulse']==n_pulse),'Normalized collected charge'].mean()
-			df.loc[(df['Pad']==pad)&(df['n_pulse']==n_pulse),'Normalized collected charge'] -= offset_to_subtract
-			scale_factor = df.loc[rows_where_I_expect_full_signal_i_e_where_there_is_silicon&(df['Pad']==pad)&(df['n_pulse']==n_pulse),'Normalized collected charge'].mean()
-			df.loc[(df['Pad']==pad)&(df['n_pulse']==n_pulse),'Normalized collected charge'] /= scale_factor
-	return df
+			offset_to_subtract = normalized_charge_df.loc[rows_where_I_expect_no_signal_i_e_where_there_is_metal&(df['Pad']==pad)&(df['n_pulse']==n_pulse),'Normalized collected charge'].mean()
+			normalized_charge_df.loc[(df['Pad']==pad)&(df['n_pulse']==n_pulse),'Normalized collected charge'] -= offset_to_subtract
+			scale_factor = normalized_charge_df.loc[rows_where_I_expect_full_signal_i_e_where_there_is_silicon&(df['Pad']==pad)&(df['n_pulse']==n_pulse),'Normalized collected charge'].mean()
+			normalized_charge_df.loc[(df['Pad']==pad)&(df['n_pulse']==n_pulse),'Normalized collected charge'] /= scale_factor
+	return normalized_charge_df
+
+def append_normalized_collected_charge_column(df, window_size=125e-6, laser_sigma=9e-6):
+	"""Given a data frame with data from a single 1D scan, this function calculates the normalized collected charge and appends a new column to the data frame."""
+	check_df_is_from_single_1D_scan(df)
+	df['Normalized collected charge'] = calculate_normalized_collected_charge(df, window_size=window_size, laser_sigma=laser_sigma)
 
 def calculate_distance_offset_by_linear_interpolation(df):
-	"""Given data from a 1D scan from two complete pixels (i.e. scanning from metal→silicon pix 1→silicon pix 2→metal) this function calculates (and applies) the offset in the `distance` column such that the edges of each metal→silicon and silicon→metal transitions are centered at 50 % of the normalized charge."""
+	"""Given data from a 1D scan from two complete pixels (i.e. scanning from metal→silicon pix 1→silicon pix 2→metal) this function calculates the offset in the `distance` column such that the edges of each metal→silicon and silicon→metal transitions are centered at 50 % of the normalized charge.
+	Returns a single float number with the offset."""
 	check_df_is_from_single_1D_scan(df)
 	
 	if 'Normalized collected charge' not in df.columns:
-		df = calculate_normalized_collected_charge(df)
-	if 'Pad' not in df.columns:
-		df = tag_left_right_pad(df)
+		raise RuntimeError(f'Before calling this function you must add the "normalized collected charge" column to the data frame by calling `append_normalized_collected_charge_column`.')
 	
 	mean_df = df.groupby(by = ['n_channel','n_pulse','n_position','Pad']).mean()
 	mean_df = mean_df.reset_index()
@@ -126,24 +147,25 @@ def calculate_distance_offset_by_linear_interpolation(df):
 			)
 		metal_to_silicon_transition_distance[pad] = distance_vs_normalized_collected_charge(.5) # It is the distance in which the normalized collected charge is 0.5
 	offset = np.mean(list(metal_to_silicon_transition_distance.values()))
-	df['Distance offset by linear interpolation (m)'] = offset + mean_distance
-	return df
+	return offset + mean_distance
+
+def append_centered_distance_column(df):
+	"""Given a df from a single 1D scan of two pixels, this function appends a new column 'Distance - offset (m)' such that the scan is centered in 0 using the 50 % of the collected charge at each metal-silicon interface."""
+	df['Distance - offset (m)'] = df['Distance (m)'] - calculate_distance_offset_by_linear_interpolation(df)
 	
-def pre_process_raw_data(data_df):
+def pre_process_raw_data(df):
 	"""Given data from a single device, this function performs many "common things" such as calculating the distance, adding the "left pad" or "right pad", etc."""
-	check_df_is_from_single_1D_scan(data_df)
-	for channel, pad in tag_left_right_pad(data_df).items():
-		data_df.loc[data_df['n_channel']==channel, 'Pad'] = pad
-	distances_df = calculate_1D_scan_distance_from_dataframe(data_df)
-	data_df.set_index('n_position', inplace=True)
-	data_df = data_df.merge(distances_df, left_index=True, right_index=True)
-	data_df.reset_index(inplace=True, drop=True)
-	return data_df
+	tag_left_right_pad(df)
+	append_distance_column(df)
+	append_normalized_collected_charge_column(df)
+	append_centered_distance_column(df)
+	return df
 
 def read_and_pre_process_1D_scan_data(measurement_name: str):
 	from measurements_table import create_measurements_table # Import here to avoid circular import error.
 	measurements_table_df = create_measurements_table()
-	df = pre_process_raw_data(read_measured_data_from(measurement_name))
+	df = read_measured_data_from(measurement_name)
+	df = pre_process_raw_data(df)
 	df['Device'] = measurements_table_df.loc[measurement_name, 'Measured device']
 	return df
 
@@ -236,13 +258,10 @@ def calculate_interpixel_distance_by_linear_interpolation_using_normalized_colle
 	}
 
 if __name__ == '__main__':
-	data_df = read_and_pre_process_1D_scan_data('20211026023917_#65_1DScan_155V')
-	data_df = calculate_normalized_collected_charge(data_df)
-	line(
-		data_frame = mean_std(data_df, by=['Distance (m)','Pad','n_pulse']).query('n_pulse==2'),
-		x = 'Distance (m)',
-		y = 'Normalized collected charge mean',
-		error_y = 'Normalized collected charge std',
-		error_y_mode = 'band',
-		color = 'Pad',
-	).show()
+	measured_data = read_measured_data_from('20211108063752_#1_1DScan_133V')
+	print(measured_data)
+	print('-------------------------------------------------------------')
+	pre_process_raw_data(measured_data)
+	print('-------------------------------------------------------------')
+	
+	print(sorted(measured_data.columns))
