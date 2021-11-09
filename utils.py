@@ -197,50 +197,6 @@ def mean_std(df, by):
 	mean_df.columns = [' '.join(col).strip() for col in mean_df.columns.values]
 	return mean_df.reset_index()
 
-def get_devices_specs_dictionary(device_name: str):
-	"""Returns a dictionary containing the row for such device in the devices_sheet."""
-	devices_sheet_df = read_devices_sheet()
-	device_name = int(device_name.replace('#',''))
-	return devices_sheet_df.loc[device_name].to_dict()
-
-def get_device_specs_string(device_name: str, humanize=False):
-	devices_sheet_df = read_devices_sheet()
-	device_name = int(device_name.replace('#',''))
-	device_layout = '4×4' if '4×4' in devices_sheet_df.loc[device_name,'type'] else '2×2'
-	if humanize == False:
-		string = f'W{devices_sheet_df.loc[device_name,"wafer"]}-'
-		string += '{devices_sheet_df.loc[device_name,"trench depth"]}-'
-		string += '{devices_sheet_df.loc[device_name,"trenches"]}-'
-		string += '{devices_sheet_df.loc[device_name,"trench process"]}-'
-		string += '{devices_sheet_df.loc[device_name,"pixel border"]}-'
-		# ~ string += '{devices_sheet_df.loc[device_name,"contact type"]}-'
-		string += '{device_layout}'
-		return string
-	else:
-		SEPARATOR_CHAR = ','
-		string = f'W{devices_sheet_df.loc[device_name,"wafer"]}'
-		string += SEPARATOR_CHAR
-		if devices_sheet_df.loc[device_name,"trench depth"] == 'D1':
-			string += 'shallow'
-		elif devices_sheet_df.loc[device_name,"trench depth"] == 'D2':
-			string += 'medium depth'
-		elif devices_sheet_df.loc[device_name,"trench depth"] == 'D3':
-			string += 'deep'
-		string += SEPARATOR_CHAR
-		if devices_sheet_df.loc[device_name,"trenches"] == 1:
-			string += '1 trench'
-		else:
-			string += '2 trenches'
-		string += SEPARATOR_CHAR
-		string += f'process {devices_sheet_df.loc[device_name,"trench process"]}'
-		string += SEPARATOR_CHAR
-		string += f'border {devices_sheet_df.loc[device_name,"pixel border"]}'
-		# ~ string += SEPARATOR_CHAR
-		# ~ string += f'contact {devices_sheet_df.loc[device_name,"contact type"]}'
-		string += SEPARATOR_CHAR
-		string += f'pads {device_layout}'
-		return string
-
 def calculate_interpixel_distance_by_linear_interpolation_using_normalized_collected_charge(measured_data_df, threshold_percent=50, window_size=125e-6):
 	"""Receives a dataframe with the data from a single 1D scan, returns a float number."""
 	check_df_is_from_single_1D_scan(measured_data_df)
@@ -268,6 +224,59 @@ def calculate_interpixel_distance_by_linear_interpolation_using_normalized_colle
 		'Left pad distance (m)': threshold_distance_for_each_pad['left'],
 		'Right pad distance (m)': threshold_distance_for_each_pad['right'],
 	}
+
+class Bureaucrat:
+	# This class is just to avoid reloading the files each time I need data.
+	@property
+	def devices_sheet_df(self):
+		if not hasattr(self, '_devices_sheet_df'):
+			self._devices_sheet_df = read_devices_sheet()
+		return self._devices_sheet_df
+	
+	def get_devices_specs_dictionary(self, device_name: str):
+		"""Returns a dictionary containing the row for such device in the devices_sheet."""
+		device_name = int(device_name.replace('#',''))
+		return self.devices_sheet_df.loc[device_name].to_dict()
+	
+	def get_device_specs_string(self, device_name: str, humanize=False):
+		devices_sheet_df = self.devices_sheet_df
+		device_name = int(device_name.replace('#',''))
+		device_layout = '4×4' if '4×4' in devices_sheet_df.loc[device_name,'type'] else '2×2'
+		if humanize == False:
+			string = f'W{devices_sheet_df.loc[device_name,"wafer"]}-'
+			string += '{devices_sheet_df.loc[device_name,"trench depth"]}-'
+			string += '{devices_sheet_df.loc[device_name,"trenches"]}-'
+			string += '{devices_sheet_df.loc[device_name,"trench process"]}-'
+			string += '{devices_sheet_df.loc[device_name,"pixel border"]}-'
+			# ~ string += '{devices_sheet_df.loc[device_name,"contact type"]}-'
+			string += '{device_layout}'
+			return string
+		else:
+			SEPARATOR_CHAR = ','
+			string = f'W{devices_sheet_df.loc[device_name,"wafer"]}'
+			string += SEPARATOR_CHAR
+			if devices_sheet_df.loc[device_name,"trench depth"] == 'D1':
+				string += 'shallow'
+			elif devices_sheet_df.loc[device_name,"trench depth"] == 'D2':
+				string += 'medium depth'
+			elif devices_sheet_df.loc[device_name,"trench depth"] == 'D3':
+				string += 'deep'
+			string += SEPARATOR_CHAR
+			if devices_sheet_df.loc[device_name,"trenches"] == 1:
+				string += '1 trench'
+			else:
+				string += '2 trenches'
+			string += SEPARATOR_CHAR
+			string += f'process {devices_sheet_df.loc[device_name,"trench process"]}'
+			string += SEPARATOR_CHAR
+			string += f'border {devices_sheet_df.loc[device_name,"pixel border"]}'
+			# ~ string += SEPARATOR_CHAR
+			# ~ string += f'contact {devices_sheet_df.loc[device_name,"contact type"]}'
+			string += SEPARATOR_CHAR
+			string += f'pads {device_layout}'
+			return string
+
+bureaucrat = Bureaucrat()
 
 if __name__ == '__main__':
 	measured_data = read_and_pre_process_1D_scan_data('20211031011655_#68_1DScan_138V')
