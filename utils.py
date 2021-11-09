@@ -88,6 +88,8 @@ def append_distance_column(df):
 	df.set_index('n_position', inplace=True)
 	df['Distance (m)'] = n_positions_df
 	df.reset_index(inplace=True)
+	if 'index' in df.columns:
+		df.drop(columns='index', inplace=True)
 
 def calculate_normalized_collected_charge(df, window_size=125e-6, laser_sigma=9e-6):
 	"""df must be the dataframe from a single 1D scan. `window_size` and `laser_sigma` are used to know where we expect zero signal and where we expect full signal.
