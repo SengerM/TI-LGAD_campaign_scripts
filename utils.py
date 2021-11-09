@@ -204,8 +204,16 @@ def get_devices_specs_dictionary(device_name: str):
 def get_device_specs_string(device_name: str, humanize=False):
 	devices_sheet_df = read_devices_sheet()
 	device_name = int(device_name.replace('#',''))
+	device_layout = '4×4' if '4×4' in devices_sheet_df.loc[device_name,'type'] else '2×2'
 	if humanize == False:
-		return f'W{devices_sheet_df.loc[device_name,"wafer"]}-{devices_sheet_df.loc[device_name,"trench depth"]}-{devices_sheet_df.loc[device_name,"trenches"]}-{devices_sheet_df.loc[device_name,"trench process"]}-{devices_sheet_df.loc[device_name,"pixel border"]}-{devices_sheet_df.loc[device_name,"contact type"]}'
+		string = f'W{devices_sheet_df.loc[device_name,"wafer"]}-'
+		string += '{devices_sheet_df.loc[device_name,"trench depth"]}-'
+		string += '{devices_sheet_df.loc[device_name,"trenches"]}-'
+		string += '{devices_sheet_df.loc[device_name,"trench process"]}-'
+		string += '{devices_sheet_df.loc[device_name,"pixel border"]}-'
+		# ~ string += '{devices_sheet_df.loc[device_name,"contact type"]}-'
+		string += '{device_layout}'
+		return string
 	else:
 		SEPARATOR_CHAR = ','
 		string = f'W{devices_sheet_df.loc[device_name,"wafer"]}'
@@ -225,8 +233,10 @@ def get_device_specs_string(device_name: str, humanize=False):
 		string += f'process {devices_sheet_df.loc[device_name,"trench process"]}'
 		string += SEPARATOR_CHAR
 		string += f'border {devices_sheet_df.loc[device_name,"pixel border"]}'
+		# ~ string += SEPARATOR_CHAR
+		# ~ string += f'contact {devices_sheet_df.loc[device_name,"contact type"]}'
 		string += SEPARATOR_CHAR
-		string += f'contact {devices_sheet_df.loc[device_name,"contact type"]}'
+		string += f'pads {device_layout}'
 		return string
 
 def calculate_interpixel_distance_by_linear_interpolation_using_normalized_collected_charge(measured_data_df, threshold_percent=50, window_size=125e-6):
