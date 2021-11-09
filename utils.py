@@ -173,6 +173,12 @@ def mean_std(df, by):
 	mean_df.columns = [' '.join(col).strip() for col in mean_df.columns.values]
 	return mean_df.reset_index()
 
+def get_devices_specs_dictionary(device_name: str):
+	"""Returns a dictionary containing the row for such device in the devices_sheet."""
+	devices_sheet_df = read_devices_sheet()
+	device_name = int(device_name.replace('#',''))
+	return devices_sheet_df.loc[device_name].to_dict()
+
 def get_device_specs_string(device_name: str, humanize=False):
 	devices_sheet_df = read_devices_sheet()
 	device_name = int(device_name.replace('#',''))
