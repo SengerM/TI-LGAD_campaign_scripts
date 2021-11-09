@@ -47,18 +47,20 @@ def read_measured_data_from(measurement_name: str):
 	"""Reads the data from a 1D scan and returns a dataframe. The dataframe is returned "intact" in the sense that nothing is done, except that a column is added indicating the measurement name."""
 	for scan_script_name in ['linear_scan_many_triggers_per_point','1D_scan', 'scan_1D']:
 		try: # First try to read feather as it is much faster.
-			df = pandas.read_feather(path_to_base_TI_LGAD/Path('measurements_data')/Path(measurement_name)/Path(scan_script_name)/Path('measured_data.fd'))
+			df = pandas.read_feather(path_to_measurements_directory/Path(measurement_name)/Path(scan_script_name)/Path('measured_data.fd'))
 			df['Measurement name'] = measurement_name
-			return df
+			break
 		except FileNotFoundError:
 			pass
 		try:
-			df = pandas.read_csv(path_to_base_TI_LGAD/Path('measurements_data')/Path(measurement_name)/Path(scan_script_name)/Path('measured_data.csv'))
+			df = pandas.read_csv(path_to_measurements_directory/Path(measurement_name)/Path(scan_script_name)/Path('measured_data.csv'))
 			df['Measurement name'] = measurement_name
-			return df
+			break
 		except FileNotFoundError:
 			pass
-	raise FileNotFoundError(f'Cannot find measured data for measurement {repr(measurement_name)}.')
+	if 'df' not in locals():
+		raise FileNotFoundError(f'Cannot find measured data for measurement {repr(measurement_name)}.')
+	return df.sort_values(by=['n_position','n_trigger','n_trigger','n_channel'])
 
 def line(error_y_mode=None, **kwargs):
 	# I moved this function here https://github.com/SengerM/grafica/blob/main/grafica/plotly_utils/utils.py
@@ -268,10 +270,9 @@ def calculate_interpixel_distance_by_linear_interpolation_using_normalized_colle
 	}
 
 if __name__ == '__main__':
-	measured_data = read_measured_data_from('20211108063752_#1_1DScan_133V')
-	print(measured_data)
+	measured_data = read_and_pre_process_1D_scan_data('20211031011655_#68_1DScan_138V')
+	print(measured_data['n_position'])
 	print('-------------------------------------------------------------')
-	pre_process_raw_data(measured_data)
 	print('-------------------------------------------------------------')
 	
 	print(sorted(measured_data.columns))
