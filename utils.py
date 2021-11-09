@@ -90,12 +90,15 @@ def append_distance_column(df):
 	df.reset_index(inplace=True)
 
 def calculate_normalized_collected_charge(df, window_size=125e-6, laser_sigma=9e-6):
-	"""df must be the dataframe from a single 1D scan. `window_size` and `laser_sigma` are used to know where we expect zero signal and where we expect full signal."""
+	"""df must be the dataframe from a single 1D scan. `window_size` and `laser_sigma` are used to know where we expect zero signal and where we expect full signal.
+	Return a single-column-dataframe containint the value of the normalized collected charge at each row."""
 	check_df_is_from_single_1D_scan(df)
-	
+	normalized_charge_df = pandas.DataFrame(index=df.index)
+	normalized_charge_df['Normalized collected charge'] = df['Collected charge (V s)'].copy()
 	if 'Pad' not in df.columns:
-		df = pre_process_raw_data(df)
-	df['Normalized collected charge'] = df['Collected charge (V s)']
+		raise RuntimeError(f'Before calling this function you have to call `tag_left_right_pad` function on your data frame.')
+	if 'Distance (m)' not in df.columns:
+		raise RuntimeError(f'Before calling this function you have to call `append_distance_column` function on your data frame.')
 	for n_pulse in sorted(set(df['n_pulse'])):
 		for pad in {'left','right'}:
 			rows_where_I_expect_no_signal_i_e_where_there_is_metal = (df['Distance (m)'] < df['Distance (m)'].mean() - window_size - 2*laser_sigma) | (df['Distance (m)'] > df['Distance (m)'].mean() + window_size + 2*laser_sigma)
@@ -103,11 +106,16 @@ def calculate_normalized_collected_charge(df, window_size=125e-6, laser_sigma=9e
 				rows_where_I_expect_full_signal_i_e_where_there_is_silicon = (df['Distance (m)'] > df['Distance (m)'].mean() - window_size + 2*laser_sigma) & (df['Distance (m)'] < df['Distance (m)'].mean() - 2*laser_sigma)
 			elif pad == 'right':
 				rows_where_I_expect_full_signal_i_e_where_there_is_silicon = (df['Distance (m)'] < df['Distance (m)'].mean() + window_size - 2*laser_sigma) & (df['Distance (m)'] > df['Distance (m)'].mean() + 2*laser_sigma)
-			offset_to_subtract = df.loc[rows_where_I_expect_no_signal_i_e_where_there_is_metal&(df['Pad']==pad)&(df['n_pulse']==n_pulse),'Normalized collected charge'].mean()
-			df.loc[(df['Pad']==pad)&(df['n_pulse']==n_pulse),'Normalized collected charge'] -= offset_to_subtract
-			scale_factor = df.loc[rows_where_I_expect_full_signal_i_e_where_there_is_silicon&(df['Pad']==pad)&(df['n_pulse']==n_pulse),'Normalized collected charge'].mean()
-			df.loc[(df['Pad']==pad)&(df['n_pulse']==n_pulse),'Normalized collected charge'] /= scale_factor
-	return df
+			offset_to_subtract = normalized_charge_df.loc[rows_where_I_expect_no_signal_i_e_where_there_is_metal&(df['Pad']==pad)&(df['n_pulse']==n_pulse),'Normalized collected charge'].mean()
+			normalized_charge_df.loc[(df['Pad']==pad)&(df['n_pulse']==n_pulse),'Normalized collected charge'] -= offset_to_subtract
+			scale_factor = normalized_charge_df.loc[rows_where_I_expect_full_signal_i_e_where_there_is_silicon&(df['Pad']==pad)&(df['n_pulse']==n_pulse),'Normalized collected charge'].mean()
+			normalized_charge_df.loc[(df['Pad']==pad)&(df['n_pulse']==n_pulse),'Normalized collected charge'] /= scale_factor
+	return normalized_charge_df
+
+def append_normalized_collected_charge_column(df, window_size=125e-6, laser_sigma=9e-6):
+	"""Given a data frame with data from a single 1D scan, this function calculates the normalized collected charge and appends a new column to the data frame."""
+	check_df_is_from_single_1D_scan(df)
+	df['Normalized collected charge'] = calculate_normalized_collected_charge(df, window_size=window_size, laser_sigma=laser_sigma)
 
 def calculate_distance_offset_by_linear_interpolation(df):
 	"""Given data from a 1D scan from two complete pixels (i.e. scanning from metal→silicon pix 1→silicon pix 2→metal) this function calculates (and applies) the offset in the `distance` column such that the edges of each metal→silicon and silicon→metal transitions are centered at 50 % of the normalized charge."""
