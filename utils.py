@@ -118,13 +118,12 @@ def append_normalized_collected_charge_column(df, window_size=125e-6, laser_sigm
 	df['Normalized collected charge'] = calculate_normalized_collected_charge(df, window_size=window_size, laser_sigma=laser_sigma)
 
 def calculate_distance_offset_by_linear_interpolation(df):
-	"""Given data from a 1D scan from two complete pixels (i.e. scanning from metal→silicon pix 1→silicon pix 2→metal) this function calculates (and applies) the offset in the `distance` column such that the edges of each metal→silicon and silicon→metal transitions are centered at 50 % of the normalized charge."""
+	"""Given data from a 1D scan from two complete pixels (i.e. scanning from metal→silicon pix 1→silicon pix 2→metal) this function calculates the offset in the `distance` column such that the edges of each metal→silicon and silicon→metal transitions are centered at 50 % of the normalized charge.
+	Returns a single float number with the offset."""
 	check_df_is_from_single_1D_scan(df)
 	
 	if 'Normalized collected charge' not in df.columns:
-		df = calculate_normalized_collected_charge(df)
-	if 'Pad' not in df.columns:
-		df = tag_left_right_pad(df)
+		raise RuntimeError(f'Before calling this function you must add the "normalized collected charge" column to the data frame by calling `append_normalized_collected_charge_column`.')
 	
 	mean_df = df.groupby(by = ['n_channel','n_pulse','n_position','Pad']).mean()
 	mean_df = mean_df.reset_index()
@@ -146,8 +145,11 @@ def calculate_distance_offset_by_linear_interpolation(df):
 			)
 		metal_to_silicon_transition_distance[pad] = distance_vs_normalized_collected_charge(.5) # It is the distance in which the normalized collected charge is 0.5
 	offset = np.mean(list(metal_to_silicon_transition_distance.values()))
-	df['Distance offset by linear interpolation (m)'] = offset + mean_distance
-	return df
+	return offset + mean_distance
+
+def append_centered_distance_column(df):
+	"""Given a df from a single 1D scan of two pixels, this function appends a new column 'Distance - offset (m)' such that the scan is centered in 0 using the 50 % of the collected charge at each metal-silicon interface."""
+	df['Distance - offset (m)'] = df['Distance (m)'] - calculate_distance_offset_by_linear_interpolation(df)
 	
 def pre_process_raw_data(data_df):
 	"""Given data from a single device, this function performs many "common things" such as calculating the distance, adding the "left pad" or "right pad", etc."""
