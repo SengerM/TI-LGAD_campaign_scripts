@@ -153,21 +153,19 @@ def append_centered_distance_column(df):
 	"""Given a df from a single 1D scan of two pixels, this function appends a new column 'Distance - offset (m)' such that the scan is centered in 0 using the 50 % of the collected charge at each metal-silicon interface."""
 	df['Distance - offset (m)'] = df['Distance (m)'] - calculate_distance_offset_by_linear_interpolation(df)
 	
-def pre_process_raw_data(data_df):
+def pre_process_raw_data(df):
 	"""Given data from a single device, this function performs many "common things" such as calculating the distance, adding the "left pad" or "right pad", etc."""
-	check_df_is_from_single_1D_scan(data_df)
-	for channel, pad in tag_left_right_pad(data_df).items():
-		data_df.loc[data_df['n_channel']==channel, 'Pad'] = pad
-	distances_df = calculate_1D_scan_distance_from_dataframe(data_df)
-	data_df.set_index('n_position', inplace=True)
-	data_df = data_df.merge(distances_df, left_index=True, right_index=True)
-	data_df.reset_index(inplace=True, drop=True)
-	return data_df
+	tag_left_right_pad(df)
+	append_distance_column(df)
+	append_normalized_collected_charge_column(df)
+	append_centered_distance_column(df)
+	return df
 
 def read_and_pre_process_1D_scan_data(measurement_name: str):
 	from measurements_table import create_measurements_table # Import here to avoid circular import error.
 	measurements_table_df = create_measurements_table()
-	df = pre_process_raw_data(read_measured_data_from(measurement_name))
+	df = read_measured_data_from(measurement_name)
+	df = pre_process_raw_data(df)
 	df['Device'] = measurements_table_df.loc[measurement_name, 'Measured device']
 	return df
 
@@ -260,13 +258,10 @@ def calculate_interpixel_distance_by_linear_interpolation_using_normalized_colle
 	}
 
 if __name__ == '__main__':
-	data_df = read_and_pre_process_1D_scan_data('20211026023917_#65_1DScan_155V')
-	data_df = calculate_normalized_collected_charge(data_df)
-	line(
-		data_frame = mean_std(data_df, by=['Distance (m)','Pad','n_pulse']).query('n_pulse==2'),
-		x = 'Distance (m)',
-		y = 'Normalized collected charge mean',
-		error_y = 'Normalized collected charge std',
-		error_y_mode = 'band',
-		color = 'Pad',
-	).show()
+	measured_data = read_measured_data_from('20211108063752_#1_1DScan_133V')
+	print(measured_data)
+	print('-------------------------------------------------------------')
+	pre_process_raw_data(measured_data)
+	print('-------------------------------------------------------------')
+	
+	print(sorted(measured_data.columns))
