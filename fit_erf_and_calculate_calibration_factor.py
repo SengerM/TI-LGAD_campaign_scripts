@@ -7,6 +7,7 @@ from pathlib import Path
 import plotly.express as px
 import plotly.graph_objects as go
 import numpy as np
+from scipy import interpolate
 
 def metal_silicon_transition_model_function_left_pad(x, y_scale, laser_sigma, x_offset, y_offset):
 	return y_scale*special.erf((x-x_offset)/laser_sigma*2**.5) + y_offset
@@ -51,7 +52,7 @@ def fit_erf(df, windows_size=130e-6):
 		fit_results[pad] = fit_model.fit(y_data_for_fit, parameters, x=x_data_for_fit)
 	return fit_results
 
-def script_core(measurement_name: str):
+def script_core(measurement_name: str, window_size=125e-6):
 	bureaucrat = Bureaucrat(
 		utils.path_to_measurements_directory/Path(measurement_name),
 		new_measurement = False,
@@ -60,9 +61,7 @@ def script_core(measurement_name: str):
 	
 	measured_data_df = utils.read_and_pre_process_1D_scan_data(measurement_name)
 	
-	WINDOWS_SIZE = 130e-6
-	
-	fit_results = fit_erf(measured_data_df, windows_size=WINDOWS_SIZE)
+	fit_results = fit_erf(measured_data_df, windows_size=window_size)
 	results = pandas.DataFrame(columns = ['Pad'])
 	results.set_index('Pad', inplace=True)
 	for pad in fit_results:
@@ -84,9 +83,9 @@ def script_core(measurement_name: str):
 	)
 	for pad in results.index:
 		if pad == 'left':
-			df = measured_data_df.loc[measured_data_df['Distance (m)']<measured_data_df['Distance (m)'].mean()-WINDOWS_SIZE/2,'Distance (m)']
+			df = measured_data_df.loc[measured_data_df['Distance (m)']<measured_data_df['Distance (m)'].mean()-window_size/2,'Distance (m)']
 		else:
-			df = measured_data_df.loc[measured_data_df['Distance (m)']>measured_data_df['Distance (m)'].mean()+WINDOWS_SIZE/2,'Distance (m)']
+			df = measured_data_df.loc[measured_data_df['Distance (m)']>measured_data_df['Distance (m)'].mean()+window_size/2,'Distance (m)']
 		x = np.linspace(min(df), max(df), 99)
 		fig.add_trace(
 			go.Scatter(
@@ -98,6 +97,54 @@ def script_core(measurement_name: str):
 			)
 		)
 	fig.write_html(str(bureaucrat.processed_data_dir_path/Path(f'fit.html')), include_plotlyjs = 'cdn')
+	
+	# Now center data in Distance (m) = 0 and find calibration factor ---
+	offset = measured_data_df['Distance (m)'].iloc[0] - measured_data_df['Distance - offset (m)'].iloc[0]
+	x_50_percent = {}
+	for pad in results.index:
+		if pad == 'left':
+			df = measured_data_df.loc[measured_data_df['Distance (m)']<measured_data_df['Distance (m)'].mean()-window_size/2,'Distance (m)']
+		else:
+			df = measured_data_df.loc[measured_data_df['Distance (m)']>measured_data_df['Distance (m)'].mean()+window_size/2,'Distance (m)']
+		x = np.linspace(min(df), max(df), 99)
+		y = fit_results[pad].eval(params=fit_results[pad].params, x = x)
+		inverted_erf = interpolate.interp1d(
+			x = y,
+			y = x,
+		)
+		x_50_percent[pad] = float(inverted_erf(.5))
+	multiply_distance_by_this_scale_factor_to_fix_calibration = 2*window_size/((x_50_percent['left']-x_50_percent['right'])**2)**.5
+	with open(bureaucrat.processed_data_dir_path/Path('scale_factor.txt'), 'w') as ofile:
+		print(f'multiply_distance_by_this_scale_factor_to_fix_calibration = {multiply_distance_by_this_scale_factor_to_fix_calibration}', file=ofile)
+	
+	for distance_col in {'Distance (m)','Distance - offset (m)'}:
+		measured_data_df[f'{distance_col} calibrated'] = measured_data_df[distance_col]*multiply_distance_by_this_scale_factor_to_fix_calibration
+	fig = utils.line(
+		data_frame = utils.mean_std(measured_data_df, by=['n_position','Pad', 'Distance - offset (m) calibrated', 'Distance (m) calibrated']),
+		x = 'Distance - offset (m) calibrated',
+		y = 'Normalized collected charge mean',
+		error_y = 'Normalized collected charge std',
+		error_y_mode = 'band',
+		color = 'Pad',
+		markers = '.',
+		title = f'Laser profile check after calibration applied<br><sup>Measurement: {bureaucrat.measurement_name}</sup>',
+	)
+	for pad in results.index:
+		if pad == 'left':
+			df = measured_data_df.loc[measured_data_df['Distance (m)']<measured_data_df['Distance (m)'].mean()-window_size/2,'Distance (m)']
+		else:
+			df = measured_data_df.loc[measured_data_df['Distance (m)']>measured_data_df['Distance (m)'].mean()+window_size/2,'Distance (m)']
+		x = np.linspace(min(df), max(df), 99)
+		fig.add_trace(
+			go.Scatter(
+				x = (x-offset)*multiply_distance_by_this_scale_factor_to_fix_calibration,
+				y = fit_results[pad].eval(params=fit_results[pad].params, x = x),
+				mode = 'lines',
+				name = f'Fit erf {pad} pad, σ<sub>laser</sub>={fit_results[pad].params["laser_sigma"].value*1e6*multiply_distance_by_this_scale_factor_to_fix_calibration:.1f} µm',
+				line = dict(color='black', dash='dash'),
+			)
+		)
+	fig.write_html(str(bureaucrat.processed_data_dir_path/Path(f'after_calibration.html')), include_plotlyjs = 'cdn')
 	
 if __name__ == '__main__':
 	import measurements_table as mt
