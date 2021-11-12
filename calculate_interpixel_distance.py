@@ -16,10 +16,13 @@ def script_core(measurement_name: str):
 	measured_data_df = measured_data_df.query('n_pulse == 1')
 	
 	interpixel_distances_df = pandas.DataFrame()
-	for threshold in sorted({11,22,33,44,50,55,66,77,88}):
+	for threshold in sorted({8,22,37,50,60+3,77,92}):
 		calculated_values = utils.calculate_interpixel_distance_by_linear_interpolation_using_normalized_collected_charge(measured_data_df, threshold_percent=threshold)
 		interpixel_distances_df = interpixel_distances_df.append(calculated_values, ignore_index=True)
 	interpixel_distances_df.set_index('Threshold (%)', inplace=True)
+	
+	with open(bureaucrat.processed_data_dir_path/Path('interpixel_distance.txt'), 'w') as ofile:
+		print(f'Inter-pixel distance (m) = {utils.calculate_interpixel_distance_by_linear_interpolation_using_normalized_collected_charge(measured_data_df, threshold_percent=50)["Inter-pixel distance (m)"]}', file=ofile)
 	
 	fig = utils.line(
 		data_frame = utils.mean_std(measured_data_df, by=['Distance (m)','Pad']),
@@ -28,7 +31,10 @@ def script_core(measurement_name: str):
 		error_y = 'Normalized collected charge std',
 		error_y_mode = 'band',
 		color = 'Pad',
-		markers = True,
+		labels = {
+			'Normalized collected charge mean': 'Normalized collected charge',
+			'Distance (m)': 'Laser position (m)',
+		},
 		title = f'Inter-pixel distance<br><sup>Measurement: {bureaucrat.measurement_name}</sup>',
 	)
 	annotations = []
@@ -69,14 +75,28 @@ def script_core(measurement_name: str):
 
 if __name__ == '__main__':
 	import argparse
+	import measurements_table as mt
+	
 	parser = argparse.ArgumentParser(description='Plots every thing measured in an xy scan.')
 	parser.add_argument(
 		'--dir',
 		metavar = 'path', 
-		help = 'Path to the base directory of a measurement.',
+		help = 'Path to the base directory of a measurement. If "all", the inter-pixel distance is calculated for all linear scans.',
 		required = True,
 		dest = 'directory',
 		type = str,
 	)
 	args = parser.parse_args()
-	script_core(Path(args.directory).parts[-1])
+	if args.directory.lower() != 'all':
+		script_core(Path(args.directory).parts[-1])
+	else:
+		measurements_table_df = mt.create_measurements_table()
+		for measurement_name in sorted(measurements_table_df.index)[::-1]:
+			if mt.retrieve_measurement_type(measurement_name) == 'scan 1D':
+				if not (utils.path_to_measurements_directory/Path(measurement_name)/Path('calculate_interpixel_distance')).is_dir():
+					print(f'Calculating inter-pixel distance of {measurement_name}...')
+					try:
+						script_core(measurement_name)
+					except Exception as e:
+						print(f'Cannot process {measurement_name}, reason {repr(e)}...')
+				
