@@ -152,14 +152,14 @@ if __name__ == '__main__':
 	fit_results_df = pandas.DataFrame()
 	for measurement in sorted(measurements_table_df.index)[::-1]:
 		if mt.retrieve_measurement_type(measurement) == 'scan 1D':
-			if not (utils.path_to_measurements_directory/Path(measurement)/Path('fit_erf')).is_dir():
+			if not (utils.path_to_measurements_directory/Path(measurement)/Path('fit_erf_and_calculate_calibration_factor')).is_dir():
 				print(f'Processing {repr(measurement)}...')
 				try:
 					script_core(measurement)
 				except Exception as e:
 					print(f'Cannot fit_erf to measurement {repr(measurement)}, reason: {repr(e)}.')
 			try:
-				this_measurement_data = pandas.read_csv(utils.path_to_measurements_directory/Path(measurement)/Path('fit_erf/fit_results.csv'))
+				this_measurement_data = pandas.read_csv(utils.path_to_measurements_directory/Path(measurement)/Path('fit_erf_and_calculate_calibration_factor/fit_results.csv'))
 				this_measurement_data['Measurement name'] = measurement
 				fit_results_df = fit_results_df.append(this_measurement_data, ignore_index = True)
 			except:
