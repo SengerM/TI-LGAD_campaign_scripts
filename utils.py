@@ -14,7 +14,8 @@ def read_devices_sheet():
 		path_to_base_TI_LGAD/Path('doc/FBK TI-LGAD RD50 1.xlsx'),
 		sheet_name = 'devices',
 	)
-	return df.loc[:, ~df.columns.str.contains('^Unnamed')].set_index('#')
+	df['Device'] = df['#'].astype(str)
+	return df.loc[:, ~df.columns.str.contains('^Unnamed')].set_index('Device')
 
 def check_df_is_from_single_1D_scan(df):
 	"""If df contains data that looks like that from a single 1D scan of one device, this function does nothing. Otherwise, it will rise ValueError."""
