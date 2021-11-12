@@ -225,6 +225,18 @@ def calculate_interpixel_distance_by_linear_interpolation_using_normalized_colle
 		'Right pad distance (m)': threshold_distance_for_each_pad['right'],
 	}
 
+def read_previously_calculated_inter_pixel_distance(measurement_name):
+	with open(path_to_measurements_directory/Path(measurement_name)/Path('calculate_interpixel_distance')/Path('interpixel_distance.txt'), 'r') as ifile:
+		for line in ifile:
+			if 'Inter-pixel distance (m) = ' in line:
+				return float(line.replace('Inter-pixel distance (m) = ',''))
+
+def read_previously_calculated_distance_calibration_factor(measurement_name):
+	with open(path_to_measurements_directory/Path(measurement_name)/Path('fit_erf_and_calculate_calibration_factor')/Path('scale_factor.txt'), 'r') as ifile:
+		for line in ifile:
+			if 'multiply_distance_by_this_scale_factor_to_fix_calibration = ' in line:
+				return float(line.replace('multiply_distance_by_this_scale_factor_to_fix_calibration = ',''))
+
 class Bureaucrat:
 	# This class is just to avoid reloading the files each time I need data.
 	@property
