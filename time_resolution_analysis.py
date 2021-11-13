@@ -86,7 +86,8 @@ def script_core(measurement_name: str):
 	Delta_t_std_df.rename(columns={'Delta_t (s)': 'Delta_t std (s)'}, inplace=True)
 	Delta_t_std_df['Time resolution (s)'] = Delta_t_std_df['Delta_t std (s)']/2**.5
 	
-	print(Delta_t_std_df)
+	Delta_t_std_df.reset_index(drop=True).to_feather(bureaucrat.processed_data_dir_path/Path('time_resolution.fd'))
+	
 	k1 = 50
 	k2 = 50
 	fig = utils.line(
@@ -100,18 +101,28 @@ def script_core(measurement_name: str):
 		},
 		title = f'Time resolution @ k<sub>1</sub>={k1} %, k<sub>2</sub>={k2} %<br><sup>Measurement name: {bureaucrat.measurement_name}</sup>',
 	)
-	fig.show()
+	fig.write_html(str(bureaucrat.processed_data_dir_path)/Path('time_resolution_vs_distance.html'), include_plotlyjs = 'cdn')
 
 if __name__ == '__main__':
 	import argparse
-	parser = argparse.ArgumentParser(description='Performs the time resolution analysis of a 1D scan.')
+	import measurements_table as mt
+	
+	parser = argparse.ArgumentParser()
 	parser.add_argument(
 		'--dir',
 		metavar = 'path', 
-		help = 'Path to the base directory of a measurement.',
+		help = 'Path to the base directory of a measurement. If "all", the script is applied to all linear scans.',
 		required = True,
 		dest = 'directory',
 		type = str,
 	)
 	args = parser.parse_args()
-	script_core(Path(args.directory).parts[-1])
+	if args.directory.lower() != 'all':
+		script_core(Path(args.directory).parts[-1])
+	else:
+		measurements_table_df = mt.create_measurements_table()
+		for measurement_name in sorted(measurements_table_df.index)[::-1]:
+			print(f'Processing {measurement_name}...')
+			if mt.retrieve_measurement_type(measurement_name) == 'scan 1D':
+				script_core(measurement_name)
+
