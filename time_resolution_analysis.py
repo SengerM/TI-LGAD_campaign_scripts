@@ -122,7 +122,7 @@ if __name__ == '__main__':
 	else:
 		measurements_table_df = mt.create_measurements_table()
 		for measurement_name in sorted(measurements_table_df.index)[::-1]:
-			if mt.retrieve_measurement_type(measurement_name) == 'scan 1D':
+			if mt.retrieve_measurement_type(measurement_name) == 'scan 1D' and not (utils.path_to_measurements_directory/Path(measurement_name)/Path('time_resolution_analysis')/Path('time_resolution.fd')).is_file():
 				print(f'Processing {measurement_name}...')
 				script_core(measurement_name)
 
