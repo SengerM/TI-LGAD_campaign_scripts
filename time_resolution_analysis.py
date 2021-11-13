@@ -122,7 +122,7 @@ if __name__ == '__main__':
 	else:
 		measurements_table_df = mt.create_measurements_table()
 		for measurement_name in sorted(measurements_table_df.index)[::-1]:
-			print(f'Processing {measurement_name}...')
 			if mt.retrieve_measurement_type(measurement_name) == 'scan 1D':
+				print(f'Processing {measurement_name}...')
 				script_core(measurement_name)
 
