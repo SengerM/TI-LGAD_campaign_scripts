@@ -226,6 +226,11 @@ def calculate_interpixel_distance_by_linear_interpolation_using_normalized_colle
 		'Right pad distance (m)': threshold_distance_for_each_pad['right'],
 	}
 
+def read_previously_calculated_time_resolution(measurement_name):
+	time_resolution_df = pandas.read_feather(path_to_measurements_directory/Path(measurement_name)/Path('time_resolution_analysis')/Path('time_resolution.fd'))
+	time_resolution_df['Measurement name'] = measurement_name
+	return time_resolution_df
+
 def read_previously_calculated_inter_pixel_distance(measurement_name):
 	with open(path_to_measurements_directory/Path(measurement_name)/Path('calculate_interpixel_distance')/Path('interpixel_distance.txt'), 'r') as ifile:
 		for line in ifile:
