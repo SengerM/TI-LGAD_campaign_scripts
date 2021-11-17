@@ -49,11 +49,10 @@ def _retrieve_1D_scan_script_variable_from_backup(measurement_name, variable_nam
 	for path in [measurement_path/backup_path for backup_path in possible_paths_of_1D_scan_scripts_backups]:
 		try:
 			with open(path, 'r') as ifile:
-				are_we_within_if__main__ = False
 				for line in ifile:
 					if 'variables = locals(), # <-- Variables were registered at this point:' in line:
 						for element in line.split(','):
-							if variable_name in element:
+							if variable_name in element.split(':')[0]:
 								return element.split(':')[-1]
 		except FileNotFoundError:
 			pass
