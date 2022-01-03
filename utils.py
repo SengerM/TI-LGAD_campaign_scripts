@@ -243,6 +243,21 @@ def read_previously_calculated_distance_calibration_factor(measurement_name):
 			if 'multiply_distance_by_this_scale_factor_to_fix_calibration = ' in line:
 				return float(line.replace('multiply_distance_by_this_scale_factor_to_fix_calibration = ',''))
 
+def can_we_trust_this_measurement(measurement_name: str) -> 'yes, no, ?':
+	"""Looks for information about whether the measurement is a good one so we can trust, in this case returns 'yes', or if it is a bad one and we cannot trust this data, in this case returns 'no'. If there is no certainty whether we can trust or not the measurement, returns '?'."""
+	can_we_trust = '?'
+	trust_script_results_file_path = path_to_measurements_directory/Path(measurement_name)/Path('can_we_trust_this_measurement/result.txt')
+	if trust_script_results_file_path.is_file():
+		with open(trust_script_results_file_path, 'r') as ifile:
+			for line in ifile:
+				if 'can_we_trust' in line:
+					result = line.split('=')[-1].lower()
+					if 'yes' in result:
+						can_we_trust = 'yes'
+					elif 'no' in result:
+						can_we_trust = 'no'
+	return can_we_trust
+
 class Bureaucrat:
 	# This class is just to avoid reloading the files each time I need data.
 	@property
