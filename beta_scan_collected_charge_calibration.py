@@ -10,6 +10,9 @@ import measurements_table as mt
 import scipy.constants as constants
 
 def script_core(measurement_name: str):
+	if mt.retrieve_measurement_type(measurement_name) != 'beta scan':
+		raise ValueError(f'Measurement must be of type `beta scan`, but measurement {repr(measurement_name)} is a {repr(mt.retrieve_measurement_type(measurement_name))}.')
+	
 	bureaucrat = Bureaucrat(
 		utils.path_to_measurements_directory/Path(measurement_name),
 		new_measurement = False,
