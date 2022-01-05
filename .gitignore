@@ -139,3 +139,5 @@ cython_debug/
 
 *.html
 scripts_output/
+*.xlsx
+*.ods
