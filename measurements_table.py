@@ -79,6 +79,21 @@ def retrieve_laser_DAC(measurement_name):
 		pass
 	return laser_DAC
 
+def can_we_trust_this_measurement(measurement_name: str) -> 'yes, no, ?':
+	"""Looks for information about whether the measurement is a good one so we can trust, in this case returns 'yes', or if it is a bad one and we cannot trust this data, in this case returns 'no'. If there is no certainty whether we can trust or not the measurement, returns '?'."""
+	can_we_trust = '?'
+	trust_script_results_file_path = utils.path_to_measurements_directory/Path(measurement_name)/Path('can_we_trust_this_measurement/result.txt')
+	if trust_script_results_file_path.is_file():
+		with open(trust_script_results_file_path, 'r') as ifile:
+			for line in ifile:
+				if 'can_we_trust' in line:
+					result = line.split('=')[-1].lower()
+					if 'yes' in result:
+						can_we_trust = 'yes'
+					elif 'no' in result:
+						can_we_trust = 'no'
+	return can_we_trust
+
 def create_measurements_table():
 	measurements_df = pandas.DataFrame(
 		{'Measurement name': [path.parts[-1] for path in sorted(utils.path_to_measurements_directory.iterdir()) if path.is_dir()]},
@@ -90,7 +105,7 @@ def create_measurements_table():
 		measurements_df.loc[measurement_name, 'Type'] = retrieve_measurement_type(measurement_name)
 		measurements_df.loc[measurement_name, 'Bias voltage (V)'] = retrieve_bias_voltage(measurement_name)
 		measurements_df.loc[measurement_name, 'Laser DAC'] = retrieve_laser_DAC(measurement_name)
-	
+	measurements_df['Can we trust?'] = measurements_df.index.map(can_we_trust_this_measurement)
 	return measurements_df
 
 if __name__ == '__main__':
