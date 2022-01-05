@@ -51,18 +51,19 @@ for measurement_name in measurements_table_df.query('Type=="scan 1D"').index:
 		ignore_index = True,
 	)
 interpixel_distances_df.set_index('Measurement name', inplace=True)
-
+for col in {'Bias voltage (V)','Temperature (°C)','Can we trust?'}:
+	interpixel_distances_df[col] = measurements_table_df[col]
 interpixel_distances_df['Device'] = measurements_table_df['Measured device']
-interpixel_distances_df['Bias voltage (V)'] = measurements_table_df['Bias voltage (V)']
 interpixel_distances_df.loc[interpixel_distances_df['Bias voltage (V)']=='?','Bias voltage (V)'] = 'NaN'
 interpixel_distances_df['Bias voltage (V)'] = interpixel_distances_df['Bias voltage (V)'].astype(float)
 interpixel_distances_df.reset_index(inplace=True)
-interpixel_distances_df.set_index('Device', inplace=True, drop=False)
+interpixel_distances_df.set_index('Device', inplace=True)
 interpixel_distances_df = interpixel_distances_df.join(utils.bureaucrat.devices_sheet_df)
 interpixel_distances_df.set_index('Measurement name', inplace=True)
 interpixel_distances_df['Fluence (neq/cm^2)'] = interpixel_distances_df.loc[interpixel_distances_df['irradiation date']<interpixel_distances_df['Measurement date'],'neutrons (neq/cm^2×10e14)']
 interpixel_distances_df.reset_index(inplace=True)
-interpixel_distances_df['Can we trust?'] = interpixel_distances_df['Measurement name'].apply(utils.can_we_trust_this_measurement)
+
+print(sorted(interpixel_distances_df.columns))
 
 df = interpixel_distances_df.copy().reset_index()
 df = df.query('`Can we trust?`=="yes"')
@@ -75,6 +76,12 @@ df = df[~df['Voltage scan measurement name'].isin(
 )]
 df['IPD with calibration (m)'] = df['IPD (m)']*df['Distance calibration factor']
 df = df.sort_values(by=['Bias voltage (V)','trenches','trench depth'])
+def create_text_for_plot(row):
+	T = row['Temperature (°C)']
+	if not isinstance(T, float):
+		T = ''
+	return f'{row["Fluence (neq/cm^2)"]}, {T}'
+df['text'] = df.apply(create_text_for_plot, axis=1)
 fig = utils.line(
 	data_frame = df,
 	line_group = 'Voltage scan measurement name',
