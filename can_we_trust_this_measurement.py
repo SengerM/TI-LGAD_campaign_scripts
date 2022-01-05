@@ -16,13 +16,19 @@ def script_core(measurement_name: str):
 	can_we_trust = True
 	reasons_not_to_trust = []
 	
+	measured_data_df = utils.read_and_pre_process_1D_scan_data(measurement_name)
+	
 	# Check that amplifiers did not run into nonlinear mode ---
 	DYNAMIC_RANGE = .9 # Volt
 	AMMOUNT_OF_SIGNALS_WITHIN_DYNAMIC_RANGE = .95
-	measured_data_df = utils.read_and_pre_process_1D_scan_data(measurement_name)
 	if len(measured_data_df.query(f'`Amplitude (V)` >= {DYNAMIC_RANGE}'))/len(measured_data_df) > 1-AMMOUNT_OF_SIGNALS_WITHIN_DYNAMIC_RANGE:
 		can_we_trust = False
 		reasons_not_to_trust.append(f'Amplitude is > {DYNAMIC_RANGE} V for (at least) the {(1-AMMOUNT_OF_SIGNALS_WITHIN_DYNAMIC_RANGE)*100:.2f} % of the events, amplifiers go into nonlinear regime.')
+	
+	# Check that there are not too many NaN values in the amplitude ---
+	if measured_data_df['Amplitude (V)'].isna().sum()/len(measured_data_df) > .1:
+		can_we_trust = False
+		reasons_not_to_trust.append(f'Too many NaN points in the amplitude.')
 	
 	# Devices ---
 	UNTRUSTABLE_DEVICES = {'1','2','88'}
