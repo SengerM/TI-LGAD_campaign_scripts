@@ -94,6 +94,37 @@ def can_we_trust_this_measurement(measurement_name: str) -> 'yes, no, ?':
 						can_we_trust = 'no'
 	return can_we_trust
 
+def retrieve_measurement_temperature(measurement_name: str):
+	"""Looks for the results of the `summarize_measurement_temperature.py` script and parses the information. Return type can vary, it can be a float or a string with a message."""
+	temperature_summary_file_path = utils.path_to_measurements_directory/Path(measurement_name)/Path('summarize_measurement_temperature/temperature_summary.txt')
+	if not temperature_summary_file_path.is_file():
+		return '?'
+	with open(temperature_summary_file_path, 'r') as ifile:
+		for line in ifile:
+			if 'This measurement was at room temperature without controlling it.' in line:
+				return 'not controlled room temperature'
+			if 'Could not find information about temperature' in line:
+				return '?'
+			if 'Temperature mean (°C) =' in line:
+				try:
+					temperature_mean = float(line.split('=')[-1])
+				except:
+					pass
+			if 'Temperature std (°C) =' in line:
+				try:
+					temperature_std = float(line.split('=')[-1])
+				except:
+					pass
+		if 'temperature_mean' in locals():
+			if'temperature_std' in locals():
+				if temperature_std/temperature_mean < 1/100: # Temperature was very stable and constant, return just the single number.
+					return temperature_mean
+				else: # Otherwise inform about the variance.
+					return f'{temperature_mean}+-{temperature_std}'
+			else: # 'temperature_std' not in locals()
+				return temperature_mean
+	return '?' # Default case.
+
 def create_measurements_table():
 	measurements_df = pandas.DataFrame(
 		{'Measurement name': [path.parts[-1] for path in sorted(utils.path_to_measurements_directory.iterdir()) if path.is_dir()]},
@@ -106,6 +137,7 @@ def create_measurements_table():
 		measurements_df.loc[measurement_name, 'Bias voltage (V)'] = retrieve_bias_voltage(measurement_name)
 		measurements_df.loc[measurement_name, 'Laser DAC'] = retrieve_laser_DAC(measurement_name)
 	measurements_df['Can we trust?'] = measurements_df.index.map(can_we_trust_this_measurement)
+	measurements_df['Temperature (°C)'] = measurements_df.index.map(retrieve_measurement_temperature)
 	return measurements_df
 
 if __name__ == '__main__':
