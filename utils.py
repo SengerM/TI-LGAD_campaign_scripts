@@ -254,7 +254,7 @@ class Bureaucrat:
 	
 	def get_devices_specs_dictionary(self, device_name: str):
 		"""Returns a dictionary containing the row for such device in the devices_sheet."""
-		device_name = int(device_name.replace('#',''))
+		device_name = device_name.replace('#','')
 		return self.devices_sheet_df.loc[device_name].to_dict()
 	
 	def get_device_specs_string(self, device_name: str, humanize=False):
