@@ -125,13 +125,43 @@ def retrieve_measurement_temperature(measurement_name: str):
 				return temperature_mean
 	return '?' # Default case.
 
+def retrieve_measurement_when(measurement_name: str):
+	"""Returns the measurement "when" as a datetime object."""
+	return datetime.datetime.strptime(measurement_name.split('_')[0], "%Y%m%d%H%M%S")
+
+def get_transimpedance_calibration(measurement_name: str) -> float:
+	"""Returns the transimpedance to be used in the measurement to convert charge in `V s` to `Coulomb`."""
+	CALIBRATION_MEASUREMENTS = {
+		'October 2021 at room T': '20211005105459_#57_88V_BetaScan',
+		'December 2021 at -20 °C': '20211229205638_#27_BetaScan_-20Celsius_99V',
+	}
+	measurement_when = retrieve_measurement_when(measurement_name)
+	calibration_measurement_to_use = None
+	if retrieve_measurement_when(CALIBRATION_MEASUREMENTS['October 2021 at room T']) < measurement_when < retrieve_measurement_when(CALIBRATION_MEASUREMENTS['December 2021 at -20 °C']):
+		calibration_measurement_to_use = CALIBRATION_MEASUREMENTS['October 2021 at room T']
+	else:
+		measurement_temperature = retrieve_measurement_temperature(measurement_name)
+		if isinstance(measurement_temperature, float) and -25 < measurement_temperature < -15:
+			calibration_measurement_to_use = CALIBRATION_MEASUREMENTS['December 2021 at -20 °C']
+	if calibration_measurement_to_use is None:
+		raise RuntimeError(f'Cannot find an appropriate transimpedance calibration for measurement {repr(measurement_name)}.')
+	
+	TRANSIMPEDANCE_FILE_SUB_PATH = Path('PIN_diode_transimpedance_calibration_using_beta_scan/transimpedance_calibration.txt')
+	with open(utils.path_to_measurements_directory/Path(calibration_measurement_to_use)/TRANSIMPEDANCE_FILE_SUB_PATH, 'r') as ifile:
+		for line in ifile:
+			if 'Transimpedance (Ω) =' in line:
+				transimpedance = float(line.split('=')[-1])
+	if 'transimpedance' not in locals():
+		raise RuntimeError(f'Cannot get the transimpedance from the file {utils.path_to_measurements_directory/Path(calibration_measurement_to_use)/TRANSIMPEDANCE_FILE_SUB_PATH}')
+	return transimpedance
+
 def create_measurements_table():
 	measurements_df = pandas.DataFrame(
 		{'Measurement name': [path.parts[-1] for path in sorted(utils.path_to_measurements_directory.iterdir()) if path.is_dir()]},
 	)
 	measurements_df.set_index('Measurement name', inplace=True)
 	for measurement_name in measurements_df.index:
-		measurements_df.loc[measurement_name, 'When'] = datetime.datetime.strptime(measurement_name.split('_')[0], "%Y%m%d%H%M%S")
+		measurements_df.loc[measurement_name, 'When'] = retrieve_measurement_when(measurement_name)
 		measurements_df.loc[measurement_name, 'Measured device'] = retrieve_device_name(measurement_name)
 		measurements_df.loc[measurement_name, 'Type'] = retrieve_measurement_type(measurement_name)
 		measurements_df.loc[measurement_name, 'Bias voltage (V)'] = retrieve_bias_voltage(measurement_name)
