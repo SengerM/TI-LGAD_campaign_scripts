@@ -60,6 +60,9 @@ def do_k1_k2_colormap_plots_with_position_slider(Delta_t_std_df):
 		figures[pad].show()
 
 def script_core(measurement_name: str):
+	if not mt.retrieve_measurement_type(measurement_name) == 'scan 1D':
+		raise ValueError(f'Measurement must be a `scan 1D` but measurement named {repr(measurement_name)} is a {repr(mt.retrieve_measurement_type(measurement_name))}.')
+	
 	bureaucrat = Bureaucrat(
 		utils.path_to_measurements_directory/Path(measurement_name),
 		new_measurement = False,
