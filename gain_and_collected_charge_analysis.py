@@ -3,10 +3,10 @@ import utils
 from data_processing_bureaucrat.Bureaucrat import Bureaucrat
 from pathlib import Path
 import plotly.express as px
-import measurements_table
+import measurements_table as mt
 from calculate_interpixel_distance import script_core as calculate_interpixel_distance
 
-measurements_table_df = measurements_table.create_measurements_table()
+measurements_table_df = mt.create_measurements_table()
 
 # For each of the "scan 1D seeping bias voltage" I collect all the single voltage 1D scans that were created in such "voltage sweep scan".
 scans_and_sub_measurements_df = pandas.DataFrame()
@@ -38,6 +38,7 @@ for measurement_name in measurements_table_df.query('Type=="scan 1D"').index:
 			'Voltage scan measurement name': this_measurement_belongs_to_the_voltage_scan,
 			'Collected charge (C) mean': _df['Collected charge (C) mean'].mean(),
 			'Collected charge (C) std': _df['Collected charge (C) std'].mean(),
+			'Fluence (neq/cm^2)/1e14': mt.get_measurement_fluence(measurement_name)/1e14,
 		},
 		ignore_index = True,
 	)
@@ -51,7 +52,6 @@ collected_charge_df.reset_index(inplace=True)
 collected_charge_df.set_index('Measured device', inplace=True)
 collected_charge_df = collected_charge_df.join(utils.bureaucrat.devices_sheet_df)
 collected_charge_df.set_index('Measurement name', inplace=True)
-collected_charge_df['Fluence (neq/cm^2)'] = collected_charge_df.loc[collected_charge_df['irradiation date']<collected_charge_df['Measurement date'],'neutrons (neq/cm^2×10e14)']
 collected_charge_df.reset_index(inplace=True)
 
 df = collected_charge_df.copy().reset_index()
@@ -66,13 +66,13 @@ fig = utils.line(
 	error_y_mode = 'band',
 	facet_col = 'wafer',
 	facet_row = 'trenches',
-	text = 'Fluence (neq/cm^2)',
+	text = 'Fluence (neq/cm^2)/1e14',
 	color = 'trench depth',
 	symbol = 'pixel border',
 	line_dash = 'contact type',
 	grouped_legend = True,
 	hover_name = 'Measurement name',
-	hover_data = ['Fluence (neq/cm^2)','Temperature (°C)'],
+	hover_data = ['Fluence (neq/cm^2)/1e14','Temperature (°C)'],
 	labels = {
 		'Collected charge (C) mean': 'Collected charge (C)',
 		'Fluence (neq/cm^2)': 'fluence (n<sub>eq</sub>/cm<sup>2</sup>)'

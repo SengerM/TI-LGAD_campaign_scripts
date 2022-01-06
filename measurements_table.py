@@ -155,6 +155,17 @@ def get_transimpedance_calibration(measurement_name: str) -> dict:
 		raise RuntimeError(f'Cannot get the transimpedance from the file {utils.path_to_measurements_directory/Path(calibration_measurement_to_use)/TRANSIMPEDANCE_FILE_SUB_PATH}')
 	return {'transimpedance (Ω)': transimpedance, 'calibration measurement name': calibration_measurement_to_use}
 
+def get_measurement_fluence(measurement_name: str) -> float:
+	"""Returns the fluence as a float number in n_eq/cm^2 of the detector at the moment the measurement was performed."""
+	measurement_when = retrieve_measurement_when(measurement_name)
+	if measurement_when < datetime.datetime(year=2021, month=12, day=1):
+		return 0 # This was before any irradiation had been carried out.
+	measured_device = retrieve_device_name(measurement_name)
+	if measured_device is None:
+		return float('NaN') # We don't know what to do here...
+	if measurement_when > utils.bureaucrat.devices_sheet_df.loc[measured_device,'irradiation date']:
+		return utils.bureaucrat.devices_sheet_df.loc[measured_device,'neutrons (neq/cm^2)']
+
 def create_measurements_table():
 	measurements_df = pandas.DataFrame(
 		{'Measurement name': [path.parts[-1] for path in sorted(utils.path_to_measurements_directory.iterdir()) if path.is_dir()]},
