@@ -4,6 +4,7 @@ from data_processing_bureaucrat.Bureaucrat import Bureaucrat
 from pathlib import Path
 import plotly.express as px
 import plotly.graph_objects as go
+import numpy as np
 
 def do_k1_k2_colormap_plots_with_position_slider(Delta_t_std_df):
 	k1_k2_time_resolution_table = pandas.pivot_table(
@@ -86,11 +87,11 @@ def script_core(measurement_name: str):
 			Delta_t_df = Delta_t_df.append(temp_df)
 	Delta_t_df.reset_index(inplace=True)
 	Delta_t_std_df = Delta_t_df.groupby(by=['n_position','Pad','Distance (m)','k_1 (%)','k_2 (%)']).std().reset_index()
+	Delta_t_std_df.drop('n_trigger', axis=1, inplace=True)
 	Delta_t_std_df.rename(columns={'Delta_t (s)': 'Delta_t std (s)'}, inplace=True)
 	Delta_t_std_df['Time resolution (s)'] = Delta_t_std_df['Delta_t std (s)']/2**.5
 	
-	Delta_t_std_df.reset_index(drop=True).to_feather(bureaucrat.processed_data_dir_path/Path('time_resolution.fd'))
-	
+	# Plot time resolution vs distance ---
 	k1 = 50
 	k2 = 50
 	fig = utils.line(
@@ -105,6 +106,77 @@ def script_core(measurement_name: str):
 		title = f'Time resolution @ k<sub>1</sub>={k1} %, k<sub>2</sub>={k2} %<br><sup>Measurement name: {bureaucrat.measurement_name}</sup>',
 	)
 	fig.write_html(str(bureaucrat.processed_data_dir_path)/Path('time_resolution_vs_distance.html'), include_plotlyjs = 'cdn')
+	
+	# Here I assume that the time resolution satisfies the following:
+	#  1) Is the same for the left and right pixel.
+	#  2) Is independent of laser position within the plateau.
+	# I have not seen any scan in which these two conditions are false, so it seems pretty safe to just assume them.
+	left_pixel_useful_data_indices = (Delta_t_std_df['Pad']=='left') & (Delta_t_std_df['Distance (m)']>70e-6) & (Delta_t_std_df['Distance (m)']<130e-6)
+	right_pixel_useful_data_indices = (Delta_t_std_df['Pad']=='right') & (Delta_t_std_df['Distance (m)']>210e-6) & (Delta_t_std_df['Distance (m)']<260e-6)
+	useful_data_df = Delta_t_std_df[left_pixel_useful_data_indices | right_pixel_useful_data_indices]
+	time_resolution_k1_k2_df = utils.mean_std(useful_data_df, by=['k_1 (%)','k_2 (%)']) # Here is where I am actually using the two assumptions.
+	time_resolution_k1_k2_df.drop(['n_position mean','n_position std','Distance (m) mean','Distance (m) std'], axis=1, inplace=True)
+	
+	time_resolution_k1_k2_df.reset_index(drop=True).to_feather(bureaucrat.processed_data_dir_path/Path('time_resolution_vs_k1_k2.fd'))
+	
+	time_resolution = time_resolution_k1_k2_df['Time resolution (s) mean'].min()
+	k1_min = list(time_resolution_k1_k2_df.loc[time_resolution_k1_k2_df['Time resolution (s) mean']==time_resolution,'k_1 (%)'])[0]
+	k2_min = list(time_resolution_k1_k2_df.loc[time_resolution_k1_k2_df['Time resolution (s) mean']==time_resolution,'k_2 (%)'])[0]
+	
+	with open(bureaucrat.processed_data_dir_path/Path('final_result.txt'), 'w') as ofile:
+		print(f'time resolution (s) = {time_resolution}', file=ofile)
+		for idx,k in enumerate([k1_min, k2_min]):
+			print(f'constant fraction discriminator k_{idx+1} (%) = {k:.0f}', file=ofile)
+	
+	pivot_table_df = pandas.pivot_table(
+		time_resolution_k1_k2_df,
+		values = 'Time resolution (s) mean',
+		index = 'k_1 (%)',
+		columns = 'k_2 (%)',
+		aggfunc = np.mean,
+	)
+	fig = go.Figure(
+		data = go.Contour(
+			z = pivot_table_df.to_numpy(),
+			x = pivot_table_df.index,
+			y = pivot_table_df.columns,
+			contours = dict(
+				coloring ='heatmap',
+				showlabels = True, # show labels on contours
+			),
+			colorbar = dict(
+				title = 'Time resolution (s) (σ<sub>Δt</sub>/√2)',
+				titleside = 'right',
+			),
+			hovertemplate = 'k<sub>1</sub>: %{x:.0f} %<br>k<sub>2</sub>: %{y:.0f} %<br>Time resolution: %{z:.1e} s',
+			name = '',
+		),
+	)
+	fig.add_trace(
+		go.Scatter(
+			x = [k1_min],
+			y = [k2_min],
+			mode = 'markers',
+			hovertext = [f'<b>Best time resolution</b><br>k<sub>1</sub>: {k1_min:.0f} %<br>k<sub>2</sub>: {k2_min:.0f} %<br>Time resolution: {time_resolution*1e12:.2f} ps'],
+			hoverinfo = 'text',
+			marker = dict(
+				color = '#61ff5c',
+			),
+			name = '',
+		)
+	)
+	fig.update_yaxes(
+		scaleanchor = "x",
+		scaleratio = 1,
+	)
+	fig.update_layout(
+		xaxis_title = 'k<sub>2</sub> (%)',
+		yaxis_title = 'k<sub>1</sub> (%)',
+		title = dict(
+			text = f'Time resolution vs CFD thresholds<br><sup>Measurement: {bureaucrat.measurement_name}</sup>',
+		),
+	)
+	fig.write_html(str(bureaucrat.processed_data_dir_path)/Path('time_resolution_vs_k1_k2_colormap.html'), include_plotlyjs = 'cdn')
 
 if __name__ == '__main__':
 	import argparse
@@ -125,10 +197,11 @@ if __name__ == '__main__':
 	else:
 		measurements_table_df = mt.create_measurements_table()
 		for measurement_name in sorted(measurements_table_df.index)[::-1]:
-			if mt.retrieve_measurement_type(measurement_name) == 'scan 1D' and not (utils.path_to_measurements_directory/Path(measurement_name)/Path('time_resolution_analysis')/Path('time_resolution.fd')).is_file():
-				print(f'Processing {measurement_name}...')
-				try:
-					script_core(measurement_name)
-				except Exception as e:
-					print(f'Cannot process {measurement_name}, reason: {repr(e)}.')
+			if mt.retrieve_measurement_type(measurement_name) == 'scan 1D':
+				if not (utils.path_to_measurements_directory/Path(measurement_name)/Path('calculate_time_resolution')/Path('final_result.txt')).is_file():
+					print(f'Processing {measurement_name}...')
+					try:
+						script_core(measurement_name)
+					except Exception as e:
+						print(f'Cannot process {measurement_name}, reason: {repr(e)}.')
 
