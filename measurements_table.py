@@ -129,8 +129,8 @@ def retrieve_measurement_when(measurement_name: str):
 	"""Returns the measurement "when" as a datetime object."""
 	return datetime.datetime.strptime(measurement_name.split('_')[0], "%Y%m%d%H%M%S")
 
-def get_transimpedance_calibration(measurement_name: str) -> float:
-	"""Returns the transimpedance to be used in the measurement to convert charge in `V s` to `Coulomb`."""
+def get_transimpedance_calibration(measurement_name: str) -> dict:
+	"""Returns the transimpedance to be used in the measurement to convert charge in `V s` to `Coulomb`. Returns a dictionary of the form {'transimpedance (Ω)': float, 'calibration measurement name': str}"""
 	CALIBRATION_MEASUREMENTS = {
 		'October 2021 at room T': '20211005105459_#57_88V_BetaScan',
 		'December 2021 at -20 °C': '20211229205638_#27_BetaScan_-20Celsius_99V',
@@ -153,7 +153,7 @@ def get_transimpedance_calibration(measurement_name: str) -> float:
 				transimpedance = float(line.split('=')[-1])
 	if 'transimpedance' not in locals():
 		raise RuntimeError(f'Cannot get the transimpedance from the file {utils.path_to_measurements_directory/Path(calibration_measurement_to_use)/TRANSIMPEDANCE_FILE_SUB_PATH}')
-	return transimpedance
+	return {'transimpedance (Ω)': transimpedance, 'calibration measurement name': calibration_measurement_to_use}
 
 def create_measurements_table():
 	measurements_df = pandas.DataFrame(
