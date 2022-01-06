@@ -75,7 +75,7 @@ fig = utils.line(
 	hover_data = ['Fluence (neq/cm^2)/1e14','Temperature (°C)'],
 	labels = {
 		'Collected charge (C) mean': 'Collected charge (C)',
-		'Fluence (neq/cm^2)': 'fluence (n<sub>eq</sub>/cm<sup>2</sup>)'
+		'Fluence (neq/cm^2)/1e14': 'fluence (n<sub>eq</sub>/cm<sup>2</sup>×10<sup>-14</sup>)',
 	},
 )
 fig.show()
