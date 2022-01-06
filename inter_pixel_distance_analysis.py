@@ -3,10 +3,10 @@ import utils
 from data_processing_bureaucrat.Bureaucrat import Bureaucrat
 from pathlib import Path
 import plotly.express as px
-import measurements_table
+import measurements_table as mt
 from calculate_interpixel_distance import script_core as calculate_interpixel_distance
 
-measurements_table_df = measurements_table.create_measurements_table()
+measurements_table_df = mt.create_measurements_table()
 
 # For each of the "scan 1D seeping bias voltage" I collect all the single voltage 1D scans that were created in such "voltage sweep scan".
 scans_and_sub_measurements_df = pandas.DataFrame()
@@ -47,6 +47,7 @@ for measurement_name in measurements_table_df.query('Type=="scan 1D"').index:
 			'IPD (m)': this_measurement_IPD,
 			'Distance calibration factor':this_measurement_calibration_factor,
 			'Voltage scan measurement name': this_measurement_belongs_to_the_voltage_scan,
+			'Fluence (neq/cm^2)/1e14': mt.get_measurement_fluence(measurement_name)/1e14,
 		},
 		ignore_index = True,
 	)
@@ -60,28 +61,19 @@ interpixel_distances_df.reset_index(inplace=True)
 interpixel_distances_df.set_index('Device', inplace=True)
 interpixel_distances_df = interpixel_distances_df.join(utils.bureaucrat.devices_sheet_df)
 interpixel_distances_df.set_index('Measurement name', inplace=True)
-interpixel_distances_df['Fluence (neq/cm^2)'] = interpixel_distances_df.loc[interpixel_distances_df['irradiation date']<interpixel_distances_df['Measurement date'],'neutrons (neq/cm^2×10e14)']
 interpixel_distances_df.reset_index(inplace=True)
-
-print(sorted(interpixel_distances_df.columns))
 
 df = interpixel_distances_df.copy().reset_index()
 df = df.query('`Can we trust?`=="yes"')
-df = df[~df['Voltage scan measurement name'].isin(
-	{
-		'20211024163128_#65_sweeping_bias_voltage', # This measurement did not have all the pads grounded.
-		'20211025184544_#65_sweeping_bias_voltage', # This is an old measurement that is incomplete in voltages. Now I have a new one with all the voltages.
-		'20211023190308_#77_sweeping_bias_voltage', # Not all pads were grounded and results look weird.
-	}
-)]
+# ~ df = df[~df['Voltage scan measurement name'].isin(
+	# ~ {
+		# ~ '20211024163128_#65_sweeping_bias_voltage', # This measurement did not have all the pads grounded.
+		# ~ '20211025184544_#65_sweeping_bias_voltage', # This is an old measurement that is incomplete in voltages. Now I have a new one with all the voltages.
+		# ~ '20211023190308_#77_sweeping_bias_voltage', # Not all pads were grounded and results look weird.
+	# ~ }
+# ~ )]
 df['IPD with calibration (m)'] = df['IPD (m)']*df['Distance calibration factor']
 df = df.sort_values(by=['Bias voltage (V)','trenches','trench depth'])
-def create_text_for_plot(row):
-	T = row['Temperature (°C)']
-	if not isinstance(T, float):
-		T = ''
-	return f'{row["Fluence (neq/cm^2)"]}, {T}'
-df['text'] = df.apply(create_text_for_plot, axis=1)
 fig = utils.line(
 	data_frame = df,
 	line_group = 'Voltage scan measurement name',
@@ -89,13 +81,16 @@ fig = utils.line(
 	y = 'IPD with calibration (m)',
 	facet_col = 'wafer',
 	facet_row = 'trenches',
-	text = 'Fluence (neq/cm^2)',
+	text = 'Fluence (neq/cm^2)/1e14',
 	color = 'trench depth',
 	symbol = 'pixel border',
 	line_dash = 'contact type',
 	grouped_legend = True,
 	hover_name = 'Measurement name',
+	hover_data = ['Fluence (neq/cm^2)/1e14','Temperature (°C)'],
 	labels = {
+		'Collected charge (C) mean': 'Collected charge (C)',
+		'Fluence (neq/cm^2)/1e14': 'fluence (n<sub>eq</sub>/cm<sup>2</sup>×10<sup>-14</sup>)',
 		'IPD with calibration (m)': 'IPD (m)',
 	},
 )
