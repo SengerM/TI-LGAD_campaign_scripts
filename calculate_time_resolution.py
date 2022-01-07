@@ -114,14 +114,16 @@ def script_core(measurement_name: str):
 	left_pixel_useful_data_indices = (Delta_t_std_df['Pad']=='left') & (Delta_t_std_df['Distance (m)']>70e-6) & (Delta_t_std_df['Distance (m)']<130e-6)
 	right_pixel_useful_data_indices = (Delta_t_std_df['Pad']=='right') & (Delta_t_std_df['Distance (m)']>210e-6) & (Delta_t_std_df['Distance (m)']<260e-6)
 	useful_data_df = Delta_t_std_df[left_pixel_useful_data_indices | right_pixel_useful_data_indices]
-	time_resolution_k1_k2_df = utils.mean_std(useful_data_df, by=['k_1 (%)','k_2 (%)']) # Here is where I am actually using the two assumptions.
-	time_resolution_k1_k2_df.drop(['n_position mean','n_position std','Distance (m) mean','Distance (m) std'], axis=1, inplace=True)
+	time_resolution_k1_k2_df = useful_data_df.groupby(by=['k_1 (%)','k_2 (%)']).agg(['median']) # Here is where I am actually using the two assumptions. The reason for using the `median` and not the `mean` is because this is more or less a Gaußian but sometimes there are a few outliers though very big, the median is more robust rejecting those points.
+	time_resolution_k1_k2_df.columns = [' '.join(col).strip() for col in time_resolution_k1_k2_df.columns.values]
+	time_resolution_k1_k2_df =  time_resolution_k1_k2_df.reset_index()
+	time_resolution_k1_k2_df.drop(['n_position median','Distance (m) median'], axis=1, inplace=True)
 	
 	time_resolution_k1_k2_df.reset_index(drop=True).to_feather(bureaucrat.processed_data_dir_path/Path('time_resolution_vs_k1_k2.fd'))
 	
-	time_resolution = time_resolution_k1_k2_df['Time resolution (s) mean'].min()
-	k1_min = list(time_resolution_k1_k2_df.loc[time_resolution_k1_k2_df['Time resolution (s) mean']==time_resolution,'k_1 (%)'])[0]
-	k2_min = list(time_resolution_k1_k2_df.loc[time_resolution_k1_k2_df['Time resolution (s) mean']==time_resolution,'k_2 (%)'])[0]
+	time_resolution = time_resolution_k1_k2_df['Time resolution (s) median'].min()
+	k1_min = list(time_resolution_k1_k2_df.loc[time_resolution_k1_k2_df['Time resolution (s) median']==time_resolution,'k_1 (%)'])[0]
+	k2_min = list(time_resolution_k1_k2_df.loc[time_resolution_k1_k2_df['Time resolution (s) median']==time_resolution,'k_2 (%)'])[0]
 	
 	with open(bureaucrat.processed_data_dir_path/Path('final_result.txt'), 'w') as ofile:
 		print(f'time resolution (s) = {time_resolution}', file=ofile)
@@ -130,7 +132,7 @@ def script_core(measurement_name: str):
 	
 	pivot_table_df = pandas.pivot_table(
 		time_resolution_k1_k2_df,
-		values = 'Time resolution (s) mean',
+		values = 'Time resolution (s) median',
 		index = 'k_1 (%)',
 		columns = 'k_2 (%)',
 		aggfunc = np.mean,
