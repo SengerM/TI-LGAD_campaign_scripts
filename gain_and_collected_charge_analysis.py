@@ -5,6 +5,7 @@ from pathlib import Path
 import plotly.express as px
 import measurements_table as mt
 from calculate_interpixel_distance import script_core as calculate_interpixel_distance
+import datetime
 
 measurements_table_df = mt.create_measurements_table()
 
@@ -26,7 +27,11 @@ scans_and_sub_measurements_df.set_index('Scan name', inplace=True)
 
 collected_charge_df = pandas.DataFrame()
 for measurement_name in measurements_table_df.query('Type=="scan 1D"').index:
-	_df = pandas.read_csv(utils.path_to_measurements_directory/Path(measurement_name)/Path('calculate_collected_charge_in_Coulomb/collected_charge_statistics.csv'))
+	try:
+		_df = pandas.read_csv(utils.path_to_measurements_directory/Path(measurement_name)/Path('calculate_collected_charge_in_Coulomb/collected_charge_statistics.csv'))
+	except FileNotFoundError as e:
+		print(f'Cannot process {repr(measurement_name)}, reason: {repr(e)}.')
+		continue
 	try:
 		this_measurement_belongs_to_the_voltage_scan = scans_and_sub_measurements_df.loc[measurement_name,'Voltage scan measurement name']
 	except KeyError:
@@ -77,5 +82,22 @@ fig = utils.line(
 		'Collected charge (C) mean': 'Collected charge (C)',
 		'Fluence (neq/cm^2)/1e14': 'fluence (n<sub>eq</sub>/cm<sup>2</sup>×10<sup>-14</sup>)',
 	},
+	title = f'Collected charge vs bias voltage<br><sup>Plot updated: {datetime.datetime.now()}</sup>',
 )
-fig.show()
+fig.write_html(str(utils.path_to_scripts_output_directory/Path('collected_charge_vs_bias_voltage.html')), include_plotlyjs = 'cdn')
+
+fig.add_annotation(
+	dict(
+		name="draft watermark",
+		text="PRELIMINARY",
+		textangle=-30,
+		opacity=0.1,
+		font=dict(color="black", size=100),
+		xref="paper",
+		yref="paper",
+		x=0.5,
+		y=0.5,
+		showarrow=False,
+	)
+)
+fig.write_html(str(utils.path_to_dashboard_media_directory/Path('collected_charge_vs_bias_voltage.html')), include_plotlyjs = 'cdn')

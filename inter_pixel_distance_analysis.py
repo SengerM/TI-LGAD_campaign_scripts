@@ -5,6 +5,7 @@ from pathlib import Path
 import plotly.express as px
 import measurements_table as mt
 from calculate_interpixel_distance import script_core as calculate_interpixel_distance
+import datetime
 
 measurements_table_df = mt.create_measurements_table()
 
@@ -65,13 +66,6 @@ interpixel_distances_df.reset_index(inplace=True)
 
 df = interpixel_distances_df.copy().reset_index()
 df = df.query('`Can we trust?`=="yes"')
-# ~ df = df[~df['Voltage scan measurement name'].isin(
-	# ~ {
-		# ~ '20211024163128_#65_sweeping_bias_voltage', # This measurement did not have all the pads grounded.
-		# ~ '20211025184544_#65_sweeping_bias_voltage', # This is an old measurement that is incomplete in voltages. Now I have a new one with all the voltages.
-		# ~ '20211023190308_#77_sweeping_bias_voltage', # Not all pads were grounded and results look weird.
-	# ~ }
-# ~ )]
 df['IPD with calibration (m)'] = df['IPD (m)']*df['Distance calibration factor']
 df = df.sort_values(by=['Bias voltage (V)','trenches','trench depth'])
 fig = utils.line(
@@ -93,6 +87,22 @@ fig = utils.line(
 		'Fluence (neq/cm^2)/1e14': 'fluence (n<sub>eq</sub>/cm<sup>2</sup>×10<sup>-14</sup>)',
 		'IPD with calibration (m)': 'IPD (m)',
 	},
+	title = f'Inter pixel distsance vs bias voltage<br><sup>Plot updated: {datetime.datetime.now()}</sup>',
 )
-fig.show()
 fig.write_html(str(utils.path_to_scripts_output_directory/Path('ipd_vs_bias_voltage.html')), include_plotlyjs = 'cdn')
+
+fig.add_annotation(
+	dict(
+		name="draft watermark",
+		text="PRELIMINARY",
+		textangle=-30,
+		opacity=0.1,
+		font=dict(color="black", size=100),
+		xref="paper",
+		yref="paper",
+		x=0.5,
+		y=0.5,
+		showarrow=False,
+	)
+)
+fig.write_html(str(utils.path_to_dashboard_media_directory/Path('ipd_vs_bias_voltage.html')), include_plotlyjs = 'cdn')
