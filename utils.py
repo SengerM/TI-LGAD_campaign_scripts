@@ -9,6 +9,7 @@ from scipy import interpolate
 path_to_base_TI_LGAD = Path('/home/alf/cernbox/projects/4D_sensors/TI-LGAD_FBK_RD50_1')
 path_to_measurements_directory = path_to_base_TI_LGAD/Path('measurements_data')
 path_to_scripts_output_directory = path_to_base_TI_LGAD/Path('scripts')/Path('scripts_output')
+path_to_dashboard_media_directory = Path('/home/alf/Desktop/TI-LGADs_dashboard/media')
 
 def read_devices_sheet():
 	df = pandas.read_excel(
