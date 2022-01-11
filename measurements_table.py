@@ -165,6 +165,7 @@ def get_measurement_fluence(measurement_name: str) -> float:
 		return float('NaN') # We don't know what to do here...
 	if measurement_when > utils.bureaucrat.devices_sheet_df.loc[measured_device,'irradiation date']:
 		return utils.bureaucrat.devices_sheet_df.loc[measured_device,'neutrons (neq/cm^2)']
+	return 0
 
 def create_measurements_table():
 	measurements_df = pandas.DataFrame(
