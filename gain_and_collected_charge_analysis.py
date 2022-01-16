@@ -83,6 +83,7 @@ fig = utils.line(
 		'Fluence (neq/cm^2)/1e14': 'fluence (n<sub>eq</sub>/cm<sup>2</sup>×10<sup>-14</sup>)',
 	},
 	title = f'Collected charge vs bias voltage<br><sup>Plot updated: {datetime.datetime.now()}</sup>',
+	log_y = True,
 )
 fig.write_html(str(utils.path_to_scripts_output_directory/Path('collected_charge_vs_bias_voltage.html')), include_plotlyjs = 'cdn')
 
