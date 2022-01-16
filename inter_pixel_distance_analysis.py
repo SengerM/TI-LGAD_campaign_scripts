@@ -89,6 +89,8 @@ fig = utils.line(
 	},
 	title = f'Inter pixel distsance vs bias voltage<br><sup>Plot updated: {datetime.datetime.now()}</sup>',
 )
+fig.update_yaxes(range=[-5e-6,25e-6])
+
 fig.write_html(str(utils.path_to_scripts_output_directory/Path('ipd_vs_bias_voltage.html')), include_plotlyjs = 'cdn')
 
 fig.add_annotation(
