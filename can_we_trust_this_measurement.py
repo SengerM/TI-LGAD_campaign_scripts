@@ -6,7 +6,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 import measurements_table as mt
 
-def script_core(measurement_name: str):
+def script_core(measurement_name: str, force=False):
 	
 	MEASUREMENTS_WITH_NOT_ALL_PADS_DC_GROUNDED = {
 		'20210825124019_#22_LPW64%_1um_3300Trig_lineary',
@@ -98,39 +98,43 @@ def script_core(measurement_name: str):
 		variables = locals(),
 	)
 	
-	can_we_trust = True
-	reasons_not_to_trust = []
+	if force == False and bureaucrat.job_successfully_completed_flag:
+		return
+	
+	with bureaucrat.verify_no_errors_context():
+		can_we_trust = True
+		reasons_not_to_trust = []
 
-	if measurement_name in MEASUREMENTS_WITH_NOT_ALL_PADS_DC_GROUNDED:
-		can_we_trust = False
-		reasons_not_to_trust.append('Not all pads were grounded.')
-	
-	measured_data_df = utils.read_and_pre_process_1D_scan_data(measurement_name)
-	
-	# Check that amplifiers did not run into nonlinear mode ---
-	DYNAMIC_RANGE = .9 # Volt
-	AMMOUNT_OF_SIGNALS_WITHIN_DYNAMIC_RANGE = .95
-	if len(measured_data_df.query(f'`Amplitude (V)` >= {DYNAMIC_RANGE}'))/len(measured_data_df) > 1-AMMOUNT_OF_SIGNALS_WITHIN_DYNAMIC_RANGE:
-		can_we_trust = False
-		reasons_not_to_trust.append(f'Amplitude is > {DYNAMIC_RANGE} V for (at least) the {(1-AMMOUNT_OF_SIGNALS_WITHIN_DYNAMIC_RANGE)*100:.2f} % of the events, amplifiers go into nonlinear regime.')
-	
-	# Check that there are not too many NaN values in the amplitude ---
-	if measured_data_df['Amplitude (V)'].isna().sum()/len(measured_data_df) > .1:
-		can_we_trust = False
-		reasons_not_to_trust.append(f'Too many NaN points in the amplitude.')
-	
-	# Devices ---
-	UNTRUSTABLE_DEVICES = {'1','2','88'}
-	if mt.retrieve_device_name(measurement_name) in UNTRUSTABLE_DEVICES:
-		can_we_trust = False
-		reasons_not_to_trust.append(f'Measured device name is {repr(mt.retrieve_device_name(measurement_name))} which is in the listed of "untrustable devices".')
-	
-	with open(bureaucrat.processed_data_dir_path/Path('result.txt'), 'w') as ofile:
-		print(f'can_we_trust = {"yes" if can_we_trust else "no"}', file=ofile)
-		if len(reasons_not_to_trust) > 0:
-			print(f'\nReasons not to trust:', file=ofile)
-			for reason in reasons_not_to_trust:
-				print(f'- {reason}', file=ofile)
+		if measurement_name in MEASUREMENTS_WITH_NOT_ALL_PADS_DC_GROUNDED:
+			can_we_trust = False
+			reasons_not_to_trust.append('Not all pads were grounded.')
+		
+		measured_data_df = utils.read_and_pre_process_1D_scan_data(measurement_name)
+		
+		# Check that amplifiers did not run into nonlinear mode ---
+		DYNAMIC_RANGE = .9 # Volt
+		AMMOUNT_OF_SIGNALS_WITHIN_DYNAMIC_RANGE = .95
+		if len(measured_data_df.query(f'`Amplitude (V)` >= {DYNAMIC_RANGE}'))/len(measured_data_df) > 1-AMMOUNT_OF_SIGNALS_WITHIN_DYNAMIC_RANGE:
+			can_we_trust = False
+			reasons_not_to_trust.append(f'Amplitude is > {DYNAMIC_RANGE} V for (at least) the {(1-AMMOUNT_OF_SIGNALS_WITHIN_DYNAMIC_RANGE)*100:.2f} % of the events, amplifiers go into nonlinear regime.')
+		
+		# Check that there are not too many NaN values in the amplitude ---
+		if measured_data_df['Amplitude (V)'].isna().sum()/len(measured_data_df) > .1:
+			can_we_trust = False
+			reasons_not_to_trust.append(f'Too many NaN points in the amplitude.')
+		
+		# Devices ---
+		UNTRUSTABLE_DEVICES = {'1','2','88'}
+		if mt.retrieve_device_name(measurement_name) in UNTRUSTABLE_DEVICES:
+			can_we_trust = False
+			reasons_not_to_trust.append(f'Measured device name is {repr(mt.retrieve_device_name(measurement_name))} which is in the listed of "untrustable devices".')
+		
+		with open(bureaucrat.processed_data_dir_path/Path('result.txt'), 'w') as ofile:
+			print(f'can_we_trust = {"yes" if can_we_trust else "no"}', file=ofile)
+			if len(reasons_not_to_trust) > 0:
+				print(f'\nReasons not to trust:', file=ofile)
+				for reason in reasons_not_to_trust:
+					print(f'- {reason}', file=ofile)
 
 if __name__ == '__main__':
 	import argparse

@@ -9,29 +9,33 @@ import datetime
 
 measurements_table_df = mt.create_measurements_table()
 
-def script_core(measurement_name: str):
+def script_core(measurement_name: str, force=False):
 	bureaucrat = Bureaucrat(
 		utils.path_to_measurements_directory/Path(measurement_name),
 		new_measurement = False,
 		variables = locals(),
 	)
 	
+	if force == False and bureaucrat.job_successfully_completed_flag:
+		return
+	
 	results_file_path = bureaucrat.processed_data_dir_path/Path('laser_DAC_summary.txt')
 	
-	measurement_when = mt.retrieve_measurement_when(measurement_name)
-	
-	with open(results_file_path, 'w') as ofile:
-		if mt.retrieve_measurement_type(measurement_name) == 'scan 1D':
-			measured_data_df = utils.read_and_pre_process_1D_scan_data(measurement_name)
-			laser_DAC = int(measured_data_df['Laser DAC'].mean())
-			if measurement_when < datetime.datetime(year=2021,month=12,day=1): # Before the TCT computer broke, I was using the "official driver" from Particulars.
-				print(f'Laser DAC (mV) = {laser_DAC}', file=ofile)
-			else: # Using my own driver.
-				print(f'Laser DAC (digital units) = {laser_DAC}', file=ofile)
-		elif mt.retrieve_measurement_type(measurement_name) == 'IV curve':
-			print(f'Laser was not used during this measurement.', file=ofile)
-		else:
-			print('Could not find information about laser DAC, but because this script does not know how to interpret this type of measurement.', file=ofile)
+	with bureaucrat.verify_no_errors_context():
+		measurement_when = mt.retrieve_measurement_when(measurement_name)
+		
+		with open(results_file_path, 'w') as ofile:
+			if mt.retrieve_measurement_type(measurement_name) == 'scan 1D':
+				measured_data_df = utils.read_and_pre_process_1D_scan_data(measurement_name)
+				laser_DAC = int(measured_data_df['Laser DAC'].mean())
+				if measurement_when < datetime.datetime(year=2021,month=12,day=1): # Before the TCT computer broke, I was using the "official driver" from Particulars.
+					print(f'Laser DAC (mV) = {laser_DAC}', file=ofile)
+				else: # Using my own driver.
+					print(f'Laser DAC (digital units) = {laser_DAC}', file=ofile)
+			elif mt.retrieve_measurement_type(measurement_name) == 'IV curve':
+				print(f'Laser was not used during this measurement.', file=ofile)
+			else:
+				print('Could not find information about laser DAC, but because this script does not know how to interpret this type of measurement.', file=ofile)
 
 if __name__ == '__main__':
 	import argparse

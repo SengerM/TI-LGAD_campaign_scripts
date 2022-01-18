@@ -9,7 +9,7 @@ import datetime
 
 measurements_table_df = mt.create_measurements_table()
 
-def script_core(measurement_name: str):
+def script_core(measurement_name: str, force=False):
 	bureaucrat = Bureaucrat(
 		utils.path_to_measurements_directory/Path(measurement_name),
 		new_measurement = False,
@@ -18,28 +18,31 @@ def script_core(measurement_name: str):
 	
 	results_file_path = bureaucrat.processed_data_dir_path/Path('temperature_summary.txt')
 	
-	if measurements_table_df.loc[measurement_name, 'When'] < datetime.datetime(year=2021, month=11, day=20):
-		with open(results_file_path, 'w') as ofile:
-			print('This measurement was at room temperature without controlling it.', file=ofile)
+	if force == False and bureaucrat.job_successfully_completed_flag:
 		return
 	
-	if mt.retrieve_measurement_type(measurement_name) == 'scan 1D':
-		measured_data_df = utils.read_and_pre_process_1D_scan_data(measurement_name)
-	elif mt.retrieve_measurement_type(measurement_name) == 'IV curve':
-		measured_data_df = pandas.read_feather(bureaucrat.processed_by_script_dir_path('IV_curve.py')/Path('measured_data.fd'))
-	else: # Default when I don't know what to do...
-		measured_data_df = None
-	if measured_data_df is not None:
-		if 'Temperature (°C)' not in measured_data_df.columns: # Temperature was not measured.
+	with bureaucrat.verify_no_errors_context():
+		if measurements_table_df.loc[measurement_name, 'When'] < datetime.datetime(year=2021, month=11, day=20):
 			with open(results_file_path, 'w') as ofile:
-				print('Could not find information about temperature, looks like it was not measured.', file=ofile)
-		else: # Temperature was measured.
+				print('This measurement was at room temperature without controlling it.', file=ofile)
+			return
+		if mt.retrieve_measurement_type(measurement_name) == 'scan 1D':
+			measured_data_df = utils.read_and_pre_process_1D_scan_data(measurement_name)
+		elif mt.retrieve_measurement_type(measurement_name) == 'IV curve':
+			measured_data_df = pandas.read_feather(bureaucrat.processed_by_script_dir_path('IV_curve.py')/Path('measured_data.fd'))
+		else: # Default when I don't know what to do...
+			measured_data_df = None
+		if measured_data_df is not None:
+			if 'Temperature (°C)' not in measured_data_df.columns: # Temperature was not measured.
+				with open(results_file_path, 'w') as ofile:
+					print('Could not find information about temperature, looks like it was not measured.', file=ofile)
+			else: # Temperature was measured.
+				with open(results_file_path, 'w') as ofile:
+					print(f"Temperature mean (°C) = {measured_data_df['Temperature (°C)'].mean(skipna=True)}", file=ofile)
+					print(f"Temperature std (°C) = {measured_data_df['Temperature (°C)'].std(skipna=True)}", file=ofile)
+		else:
 			with open(results_file_path, 'w') as ofile:
-				print(f"Temperature mean (°C) = {measured_data_df['Temperature (°C)'].mean(skipna=True)}", file=ofile)
-				print(f"Temperature std (°C) = {measured_data_df['Temperature (°C)'].std(skipna=True)}", file=ofile)
-	else:
-		with open(results_file_path, 'w') as ofile:
-			print('Could not find information about temperature, but because this script does not know how to interpret this type of measurement.', file=ofile)
+				print('Could not find information about temperature, but because this script does not know how to interpret this type of measurement.', file=ofile)
 
 if __name__ == '__main__':
 	import argparse
