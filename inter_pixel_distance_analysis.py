@@ -6,6 +6,7 @@ import plotly.express as px
 import measurements_table as mt
 from calculate_interpixel_distance import script_core as calculate_interpixel_distance
 import datetime
+import numpy as np
 
 measurements_table_df = mt.create_measurements_table()
 
@@ -41,11 +42,19 @@ for measurement_name in measurements_table_df.query('Type=="scan 1D"').index:
 		this_measurement_belongs_to_the_voltage_scan = scans_and_sub_measurements_df.loc[measurement_name,'Voltage scan measurement name']
 	except KeyError:
 		this_measurement_belongs_to_the_voltage_scan = '?'
+	try:
+		bootstrapped_IPDs = np.genfromtxt(utils.path_to_measurements_directory/Path(measurement_name)/Path('calculate_interpixel_distance')/Path('interpixel_distance_bootstrapped_values.txt'))
+		bootstrapped_IPDs = bootstrapped_IPDs[bootstrapped_IPDs>-10e-6]
+		IPD_bootstrap_std = bootstrapped_IPDs.std()
+	except OSError:
+		IPD_bootstrap_std = float('NaN')
+		
 	interpixel_distances_df = interpixel_distances_df.append(
 		{
 			'Measurement name': measurement_name,
 			'Measurement date': measurements_table_df.loc[measurement_name,'When'],
 			'IPD (m)': this_measurement_IPD,
+			'IPD std bootstrap (m)': IPD_bootstrap_std,
 			'Distance calibration factor':this_measurement_calibration_factor,
 			'Voltage scan measurement name': this_measurement_belongs_to_the_voltage_scan,
 			'Fluence (neq/cm^2)/1e14': mt.get_measurement_fluence(measurement_name)/1e14,
@@ -73,6 +82,8 @@ fig = utils.line(
 	line_group = 'Voltage scan measurement name',
 	x = 'Bias voltage (V)',
 	y = 'IPD with calibration (m)',
+	error_y = 'IPD std bootstrap (m)',
+	error_y_mode = 'band',
 	facet_col = 'wafer',
 	facet_row = 'trenches',
 	text = 'Fluence (neq/cm^2)/1e14',
