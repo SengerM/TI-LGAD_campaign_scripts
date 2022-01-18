@@ -31,6 +31,8 @@ NICE_MEASUREMENTS = {
 	'20220113142754_#79_IV_curve',
 	'20220114140017_#36',
 	'20220115173257_#37_IV_curve',
+	'20220116134824_#38_IV_curve',
+	'20220117112120_#23_IV_curve',
 }
 
 IV_measurements_table_df = mt.create_measurements_table().query('Type=="IV curve"')
