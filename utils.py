@@ -245,6 +245,10 @@ def read_previously_calculated_distance_calibration_factor(measurement_name):
 			if 'multiply_distance_by_this_scale_factor_to_fix_calibration = ' in line:
 				return float(line.replace('multiply_distance_by_this_scale_factor_to_fix_calibration = ',''))
 
+def resample_measured_data(measured_data_df):
+	resampled_df = measured_data_df.groupby(by=['n_channel', 'n_position', 'Pad']).sample(frac=1, replace=True)
+	return resampled_df
+
 class Bureaucrat:
 	# This class is just to avoid reloading the files each time I need data.
 	@property
