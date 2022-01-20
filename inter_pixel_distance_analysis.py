@@ -75,14 +75,15 @@ interpixel_distances_df.reset_index(inplace=True)
 
 df = interpixel_distances_df.copy().reset_index()
 df = df.query('`Can we trust?`=="yes"')
-df['IPD with calibration (m)'] = df['IPD (m)']*df['Distance calibration factor']
+for col in {'IPD (m)','IPD std bootstrap (m)'}:
+	df[f'{col} calibrated'] = df[col]*df['Distance calibration factor']
 df = df.sort_values(by=['Bias voltage (V)','trenches','trench depth'])
 fig = utils.line(
 	data_frame = df,
 	line_group = 'Voltage scan measurement name',
 	x = 'Bias voltage (V)',
-	y = 'IPD with calibration (m)',
-	error_y = 'IPD std bootstrap (m)',
+	y = 'IPD (m) calibrated',
+	error_y = 'IPD std bootstrap (m) calibrated',
 	error_y_mode = 'band',
 	facet_col = 'wafer',
 	facet_row = 'trenches',
@@ -96,7 +97,7 @@ fig = utils.line(
 	labels = {
 		'Collected charge (C) mean': 'Collected charge (C)',
 		'Fluence (neq/cm^2)/1e14': 'fluence (n<sub>eq</sub>/cm<sup>2</sup>×10<sup>-14</sup>)',
-		'IPD with calibration (m)': 'IPD (m)',
+		'IPD with (m) calibrated': 'IPD (m)',
 	},
 	title = f'Inter pixel distsance vs bias voltage<br><sup>Plot updated: {datetime.datetime.now()}</sup>',
 )
