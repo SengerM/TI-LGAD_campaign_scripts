@@ -7,6 +7,7 @@ import measurements_table as mt
 from calculate_interpixel_distance import script_core as calculate_interpixel_distance
 import datetime
 import numpy as np
+from scipy.stats import median_abs_deviation
 
 measurements_table_df = mt.create_measurements_table()
 
@@ -44,8 +45,7 @@ for measurement_name in measurements_table_df.query('Type=="scan 1D"').index:
 		this_measurement_belongs_to_the_voltage_scan = '?'
 	try:
 		bootstrapped_IPDs = np.genfromtxt(utils.path_to_measurements_directory/Path(measurement_name)/Path('calculate_interpixel_distance')/Path('interpixel_distance_bootstrapped_values.txt'))
-		bootstrapped_IPDs = bootstrapped_IPDs[bootstrapped_IPDs>-10e-6]
-		IPD_bootstrap_std = bootstrapped_IPDs.std()
+		IPD_bootstrap_std = median_abs_deviation(bootstrapped_IPDs)
 	except OSError:
 		IPD_bootstrap_std = float('NaN')
 		
