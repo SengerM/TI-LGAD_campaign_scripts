@@ -11,6 +11,8 @@ path_to_measurements_directory = path_to_base_TI_LGAD/Path('measurements_data')
 path_to_scripts_output_directory = path_to_base_TI_LGAD/Path('scripts')/Path('scripts_output')
 path_to_dashboard_media_directory = Path('/home/alf/Desktop/TI-LGADs_dashboard/media')
 
+k_MAD_TO_STD = 1.4826 # https://en.wikipedia.org/wiki/Median_absolute_deviation#Relation_to_standard_deviation
+
 def read_devices_sheet():
 	df = pandas.read_excel(
 		path_to_base_TI_LGAD/Path('doc/FBK TI-LGAD RD50 1.xlsx'),
