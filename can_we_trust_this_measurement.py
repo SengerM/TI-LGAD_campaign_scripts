@@ -92,6 +92,12 @@ def script_core(measurement_name: str, force=False):
 		'20211105160708_#45_1DScan_212V',
 	}
 	
+	MEASUREMENTS_IN_WHICH_THE_DETECTOR_DIED = {
+		'20220123045041_#77_7DaysAnnealing_1DScan_624V',
+		'20220123075136_#77_7DaysAnnealing_1DScan_645V',
+		'20220123105352_#77_7DaysAnnealing_1DScan_666V',
+	}
+	
 	bureaucrat = Bureaucrat(
 		utils.path_to_measurements_directory/Path(measurement_name),
 		new_measurement = False,
@@ -108,6 +114,10 @@ def script_core(measurement_name: str, force=False):
 		if measurement_name in MEASUREMENTS_WITH_NOT_ALL_PADS_DC_GROUNDED:
 			can_we_trust = False
 			reasons_not_to_trust.append('Not all pads were grounded.')
+		
+		if measurement_name in MEASUREMENTS_IN_WHICH_THE_DETECTOR_DIED:
+			can_we_trust = False
+			reasons_not_to_trust.append('Detector was dead.')
 		
 		measured_data_df = utils.read_and_pre_process_1D_scan_data(measurement_name)
 		
