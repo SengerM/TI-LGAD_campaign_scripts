@@ -101,7 +101,6 @@ def script_core(measurement_name: str, force=False):
 	FORCE_TRUST = {
 		'20211104233152_#45_sweeping_bias_voltage',
 		'20211104233307_#45_1DScan_55V',
-		'20211105013835_#45_1DScan_235V',
 		'20211105034829_#45_1DScan_145V',
 		'20211105055129_#45_1DScan_100V',
 		'20211105075430_#45_1DScan_190V',
