@@ -225,7 +225,7 @@ def calculate_interpixel_distance_by_linear_interpolation_using_normalized_colle
 		else:
 			raise ValueError(f'Received a dataframe with {repr(pad)} in the column "Pad", I dont know that this means... It is supposed to be either "left" or "right"...')
 		distance_vs_charge_linear_interpolation = interpolate.interp1d(
-			x = df.loc[rows,'Normalized collected charge mean'],
+			x = df.loc[rows,'Normalized collected charge median'],
 			y = df.loc[rows,'Distance (m)'],
 		)
 		threshold_distance_for_each_pad[pad] = distance_vs_charge_linear_interpolation(threshold_percent/100)

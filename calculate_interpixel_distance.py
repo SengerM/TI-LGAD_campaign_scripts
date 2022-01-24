@@ -26,7 +26,7 @@ def script_core(measurement_name: str, force=False):
 			calculated_values = utils.calculate_interpixel_distance_by_linear_interpolation_using_normalized_collected_charge(measured_data_df, threshold_percent=threshold)
 			interpixel_distances_df = interpixel_distances_df.append(calculated_values, ignore_index=True)
 			if threshold == 50: # Bootstrap IPD ---
-				bootstrapped_IPDs = [None]*55
+				bootstrapped_IPDs = [None]*11
 				for k in range(len(bootstrapped_IPDs)):
 					fake_IPD = utils.calculate_interpixel_distance_by_linear_interpolation_using_normalized_collected_charge(
 						utils.resample_measured_data(measured_data_df), 
@@ -41,12 +41,12 @@ def script_core(measurement_name: str, force=False):
 		fig = utils.line(
 			data_frame = utils.mean_std(measured_data_df, by=['Distance (m)','Pad']),
 			x = 'Distance (m)',
-			y = 'Normalized collected charge mean',
-			error_y = 'Normalized collected charge std',
+			y = 'Normalized collected charge median',
+			error_y = 'Normalized collected charge MAD_std',
 			error_y_mode = 'band',
 			color = 'Pad',
 			labels = {
-				'Normalized collected charge mean': 'Normalized collected charge',
+				'Normalized collected charge median': 'Normalized collected charge',
 				'Distance (m)': 'Laser position (m)',
 			},
 			title = f'Inter-pixel distance<br><sup>Measurement: {bureaucrat.measurement_name}</sup>',
@@ -119,10 +119,9 @@ if __name__ == '__main__':
 		measurements_table_df = mt.create_measurements_table()
 		for measurement_name in sorted(measurements_table_df.index)[::-1]:
 			if mt.retrieve_measurement_type(measurement_name) == 'scan 1D':
-				if not (utils.path_to_measurements_directory/Path(measurement_name)/Path('calculate_interpixel_distance')/Path('interpixel_distance.txt')).is_file():
-					print(f'Calculating inter-pixel distance of {measurement_name}...')
-					try:
-						script_core(measurement_name)
-					except Exception as e:
-						print(f'Cannot process {measurement_name}, reason {repr(e)}...')
+				print(f'Processing {measurement_name}...')
+				try:
+					script_core(measurement_name)
+				except Exception as e:
+					print(f'Cannot process {measurement_name}, reason {repr(e)}...')
 				
