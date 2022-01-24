@@ -4,6 +4,7 @@ import utils
 import pandas
 import plotly.express as px
 import datetime
+from inter_pixel_distance_analysis import SORT_VALUES_BY
 
 NICE_MEASUREMENTS = {
 	'20211114162042_#34_IV_curve',
@@ -33,6 +34,8 @@ NICE_MEASUREMENTS = {
 	'20220115173257_#37_IV_curve',
 	'20220116134824_#38_IV_curve',
 	'20220117112120_#23_IV_curve',
+	'20220118152944_#24_IV_curve',
+	'20220121145445__#77_IV_curve_after_annealing_7_days',
 }
 
 IV_measurements_table_df = mt.create_measurements_table().query('Type=="IV curve"')
@@ -72,9 +75,15 @@ for measurement_name in mean_std_df.index:
 	mean_std_df.loc[measurement_name, 'Temperature (°C)'] = mt.retrieve_measurement_temperature(measurement_name)
 mean_std_df.reset_index(inplace=True)
 
+SORT_VALUES_BY.remove('Bias voltage (V)') # This is because the `SORT_VALUES_BY` list is for laser scans but here we are dealing with IV curves.
+mean_std_df = mean_std_df.sort_values(
+	by = SORT_VALUES_BY,
+	ascending = True,
+)
+
 fig = utils.line(
 	title = f'IV curves<br><sup>Plot updated: {datetime.datetime.now()}</sup>',
-	data_frame = mean_std_df.sort_values(['n_voltage','trenches','trench depth']),
+	data_frame = mean_std_df,
 	x = 'Bias voltage (V) mean',
 	y = 'Bias current (A) mean',
 	error_y = 'Bias current (A) std',

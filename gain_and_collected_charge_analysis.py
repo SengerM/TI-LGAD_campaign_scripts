@@ -6,6 +6,7 @@ import plotly.express as px
 import measurements_table as mt
 from calculate_interpixel_distance import script_core as calculate_interpixel_distance
 import datetime
+from inter_pixel_distance_analysis import SORT_VALUES_BY
 
 measurements_table_df = mt.create_measurements_table()
 
@@ -59,9 +60,13 @@ collected_charge_df = collected_charge_df.join(utils.bureaucrat.devices_sheet_df
 collected_charge_df.set_index('Measurement name', inplace=True)
 collected_charge_df.reset_index(inplace=True)
 
+collected_charge_df = collected_charge_df.sort_values(
+	by = SORT_VALUES_BY,
+	ascending = True,
+)
+
 df = collected_charge_df.copy().reset_index()
 df = df.query('`Can we trust?`=="yes"')
-df = df.sort_values(by=['Bias voltage (V)','trenches','trench depth'])
 fig = utils.line(
 	data_frame = df,
 	line_group = 'Voltage scan measurement name',

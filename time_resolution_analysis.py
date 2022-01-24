@@ -5,6 +5,7 @@ from pathlib import Path
 import plotly.express as px
 import measurements_table as mt
 import datetime
+from inter_pixel_distance_analysis import SORT_VALUES_BY
 
 measurements_table_df = mt.create_measurements_table()
 
@@ -62,9 +63,13 @@ time_resolution_df.set_index('Measured device', inplace=True)
 for column in utils.bureaucrat.devices_sheet_df.columns:
 	time_resolution_df[column] = utils.bureaucrat.devices_sheet_df[column]
 
+time_resolution_df = time_resolution_df.sort_values(
+	by = SORT_VALUES_BY,
+	ascending = True,
+)
+
 df = time_resolution_df.reset_index()
 df = df.query('`Can we trust?`=="yes"')
-df = df.sort_values(by=['Bias voltage (V)','trenches','trench depth'])
 fig = utils.line(
 	data_frame = df,
 	line_group = 'Voltage scan measurement name',
