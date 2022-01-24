@@ -38,6 +38,7 @@ NICE_MEASUREMENTS = {
 	'20220118152944_#24_IV_curve',
 	'20220119162721_#47_IV_curve',
 	'20220121145445__#77_IV_curve_after_annealing_7_days',
+	'20220123205735_#78_after_annealing_7_days',
 }
 
 IV_measurements_table_df = mt.create_measurements_table().query('Type=="IV curve"')
