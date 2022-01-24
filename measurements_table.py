@@ -61,12 +61,18 @@ def _retrieve_1D_scan_script_variable_from_backup(measurement_name, variable_nam
 def retrieve_bias_voltage(measurement_name):
 	if retrieve_measurement_type(measurement_name) not in {'scan 1D', 'z scan for focus'}:
 		return '-'
-	bias_voltage = _retrieve_1D_scan_script_variable_from_backup(measurement_name, 'bias_voltage')
+	bias_voltage_summary_file_path = utils.path_to_measurements_directory/Path(measurement_name)/Path('summarize_measurement_bias_voltage')/Path('bias_voltage_summary.txt')
+	bias_voltage = float('NaN')
+	if bias_voltage_summary_file_path.is_file():
+		with open(bias_voltage_summary_file_path, 'r') as ifile:
+			for line in ifile:
+				if 'Bias voltage mean (V) =' in line:
+					bias_voltage = line.split('=')[-1]
 	try:
 		bias_voltage = float(bias_voltage)
-	except:
+	except ValueError:
 		pass
-	return bias_voltage
+	return -bias_voltage
 
 def retrieve_laser_DAC(measurement_name):
 	measurement_path = utils.path_to_measurements_directory/Path(measurement_name)
