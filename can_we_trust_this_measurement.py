@@ -98,6 +98,19 @@ def script_core(measurement_name: str, force=False):
 		'20220123105352_#77_7DaysAnnealing_1DScan_666V',
 	}
 	
+	FORCE_TRUST = {
+		'20211104233152_#45_sweeping_bias_voltage',
+		'20211104233307_#45_1DScan_55V',
+		'20211105013835_#45_1DScan_235V',
+		'20211105034829_#45_1DScan_145V',
+		'20211105055129_#45_1DScan_100V',
+		'20211105075430_#45_1DScan_190V',
+		'20211105095722_#45_1DScan_77V',
+		'20211105120046_#45_1DScan_122V',
+		'20211105140413_#45_1DScan_167V',
+		'20211105160708_#45_1DScan_212V',
+	}
+	
 	bureaucrat = Bureaucrat(
 		utils.path_to_measurements_directory/Path(measurement_name),
 		new_measurement = False,
@@ -139,12 +152,17 @@ def script_core(measurement_name: str, force=False):
 			can_we_trust = False
 			reasons_not_to_trust.append(f'Measured device name is {repr(mt.retrieve_device_name(measurement_name))} which is in the listed of "untrustable devices".')
 		
+		if measurement_name in FORCE_TRUST:
+			can_we_trust = True
+		
 		with open(bureaucrat.processed_data_dir_path/Path('result.txt'), 'w') as ofile:
 			print(f'can_we_trust = {"yes" if can_we_trust else "no"}', file=ofile)
 			if len(reasons_not_to_trust) > 0:
 				print(f'\nReasons not to trust:', file=ofile)
 				for reason in reasons_not_to_trust:
 					print(f'- {reason}', file=ofile)
+			if measurement_name in FORCE_TRUST:
+				print('\nThis measurement is in the "FORCE_TRUST" set.', file=ofile)
 
 if __name__ == '__main__':
 	import argparse
@@ -160,15 +178,14 @@ if __name__ == '__main__':
 	)
 	args = parser.parse_args()
 	if args.directory.lower() != 'all':
-		script_core(Path(args.directory).parts[-1])
+		script_core(Path(args.directory).parts[-1], force=True)
 	else:
 		measurements_table_df = mt.create_measurements_table()
 		for measurement_name in sorted(measurements_table_df.index)[::-1]:
 			if mt.retrieve_measurement_type(measurement_name) == 'scan 1D':
-				if not (utils.path_to_measurements_directory/Path(measurement_name)/Path('can_we_trust_this_measurement')/Path('result.txt')).is_file():
-					print(f'Processing {measurement_name}...')
-					try:
-						script_core(measurement_name)
-					except Exception as e:
-						print(f'Cannot process {measurement_name}, reason {repr(e)}...')
+				print(f'Processing {measurement_name}...')
+				try:
+					script_core(measurement_name)
+				except Exception as e:
+					print(f'Cannot process {measurement_name}, reason {repr(e)}...')
 				
