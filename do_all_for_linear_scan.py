@@ -7,6 +7,7 @@ from calculate_interpixel_distance import script_core as calculate_interpixel_di
 from fit_erf_and_calculate_calibration_factor import script_core as fit_erf_and_calculate_calibration_factor
 from calculate_collected_charge_in_Coulomb import script_core as calculate_collected_charge_in_Coulomb
 from calculate_time_resolution import script_core as calculate_time_resolution
+from summarize_measurement_bias_voltage import script_core as summarize_measurement_bias_voltage
 
 def script_core(measurement_name: str):
 	if not mt.retrieve_measurement_type(measurement_name) == 'scan 1D':
@@ -15,6 +16,7 @@ def script_core(measurement_name: str):
 	functions = {
 		'summarize_measurement_laser_DAC': summarize_measurement_laser_DAC,
 		'summarize_measurement_temperature': summarize_measurement_temperature,
+		'summarize_measurement_bias_voltage': summarize_measurement_bias_voltage,
 		'can_we_trust_this_measurement': can_we_trust_this_measurement,
 		'calculate_interpixel_distance': calculate_interpixel_distance,
 		'fit_erf_and_calculate_calibration_factor': fit_erf_and_calculate_calibration_factor,
