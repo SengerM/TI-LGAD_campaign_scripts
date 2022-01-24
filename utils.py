@@ -5,6 +5,8 @@ import plotly.graph_objs as go
 import numpy as np
 from grafica.plotly_utils.utils import line as grafica_line
 from scipy import interpolate
+from scipy.stats import median_abs_deviation
+import warnings
 
 path_to_base_TI_LGAD = Path('/home/alf/cernbox/projects/4D_sensors/TI-LGAD_FBK_RD50_1')
 path_to_measurements_directory = path_to_base_TI_LGAD/Path('measurements_data')
@@ -198,7 +200,11 @@ def mean_std(df, by):
 	2  3  2  3.333333  0.577350
 	3  4  3  4.500000  0.707107
 	"""
-	mean_df = df.groupby(by=by).agg(['mean','std'])
+	def MAD_std(x):
+		return median_abs_deviation(x, nan_policy='omit')*k_MAD_TO_STD
+	with warnings.catch_warnings(): # There is a deprecation warning that will be converted into an error in future versions of Pandas. When that happens, I will solve this.
+		warnings.simplefilter("ignore")
+		mean_df = df.groupby(by=by).agg(['mean','std',np.median,MAD_std])
 	mean_df.columns = [' '.join(col).strip() for col in mean_df.columns.values]
 	return mean_df.reset_index()
 
