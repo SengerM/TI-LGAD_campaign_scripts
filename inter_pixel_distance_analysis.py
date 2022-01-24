@@ -14,8 +14,26 @@ SORT_VALUES_BY = [
 	'trenches',
 	'pixel border',
 	'contact type',
+	'Fluence (neq/cm^2)/1e14',
 	'Bias voltage (V)',
 ]
+
+PLOT_GRAPH_DIMENSIONS = dict(
+	facet_col = 'trench depth',
+	facet_row = 'trenches',
+	# ~ text = 'Fluence (neq/cm^2)/1e14',
+	color = 'Fluence (neq/cm^2)/1e14',
+	symbol = 'pixel border',
+	line_dash = 'contact type',
+	grouped_legend = True,
+	hover_name = 'Measurement name',
+	hover_data = ['Fluence (neq/cm^2)/1e14','Temperature (°C)'],
+	labels = {
+		'Collected charge (C) mean': 'Collected charge (C)',
+		'Fluence (neq/cm^2)/1e14': 'fluence (n<sub>eq</sub>/cm<sup>2</sup>×10<sup>-14</sup>)',
+		'IPD with (m) calibrated': 'IPD (m)',
+	},
+)
 
 if __name__ == '__main__':
 	measurements_table_df = mt.create_measurements_table()
@@ -93,26 +111,13 @@ if __name__ == '__main__':
 		df[f'{col} calibrated'] = df[col]*df['Distance calibration factor']
 	fig = utils.line(
 		data_frame = df,
-		line_group = 'Voltage scan measurement name',
+		title = f'Inter pixel distsance vs bias voltage<br><sup>Plot updated: {datetime.datetime.now()}</sup>',
 		x = 'Bias voltage (V)',
 		y = 'IPD (m) calibrated',
 		error_y = 'IPD std bootstrap (m) calibrated',
 		error_y_mode = 'band',
-		facet_col = 'wafer',
-		facet_row = 'trenches',
-		text = 'Fluence (neq/cm^2)/1e14',
-		color = 'trench depth',
-		symbol = 'pixel border',
-		line_dash = 'contact type',
-		grouped_legend = True,
-		hover_name = 'Measurement name',
-		hover_data = ['Fluence (neq/cm^2)/1e14','Temperature (°C)'],
-		labels = {
-			'Collected charge (C) mean': 'Collected charge (C)',
-			'Fluence (neq/cm^2)/1e14': 'fluence (n<sub>eq</sub>/cm<sup>2</sup>×10<sup>-14</sup>)',
-			'IPD with (m) calibrated': 'IPD (m)',
-		},
-		title = f'Inter pixel distsance vs bias voltage<br><sup>Plot updated: {datetime.datetime.now()}</sup>',
+		line_group = 'Voltage scan measurement name',
+		**PLOT_GRAPH_DIMENSIONS,
 	)
 	fig.update_yaxes(range=[-5e-6,25e-6])
 

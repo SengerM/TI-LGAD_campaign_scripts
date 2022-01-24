@@ -4,7 +4,7 @@ import utils
 import pandas
 import plotly.express as px
 import datetime
-from inter_pixel_distance_analysis import SORT_VALUES_BY
+from inter_pixel_distance_analysis import SORT_VALUES_BY, PLOT_GRAPH_DIMENSIONS
 
 NICE_MEASUREMENTS = {
 	'20211114162042_#34_IV_curve',
@@ -24,6 +24,7 @@ NICE_MEASUREMENTS = {
 	'20211113164217_#87_IV_curve',
 	'20211112065952_#78_IV_curve',
 	'20211230165413_#68_IVCurve',
+	'20220103121223_#6_IV_curve',
 	'20220104153927_#69_IV_curve',
 	'20220105155316_#70_IV_curve',
 	'20211023104738_#45_IVCurve',
@@ -35,6 +36,7 @@ NICE_MEASUREMENTS = {
 	'20220116134824_#38_IV_curve',
 	'20220117112120_#23_IV_curve',
 	'20220118152944_#24_IV_curve',
+	'20220119162721_#47_IV_curve',
 	'20220121145445__#77_IV_curve_after_annealing_7_days',
 }
 
@@ -76,6 +78,7 @@ for measurement_name in mean_std_df.index:
 mean_std_df.reset_index(inplace=True)
 
 SORT_VALUES_BY.remove('Bias voltage (V)') # This is because the `SORT_VALUES_BY` list is for laser scans but here we are dealing with IV curves.
+SORT_VALUES_BY.append('n_voltage')
 mean_std_df = mean_std_df.sort_values(
 	by = SORT_VALUES_BY,
 	ascending = True,
@@ -88,20 +91,9 @@ fig = utils.line(
 	y = 'Bias current (A) mean',
 	error_y = 'Bias current (A) std',
 	error_y_mode = 'band',
-	facet_col = 'wafer',
-	facet_row = 'trenches',
-	color = 'trench depth',
-	symbol = 'pixel border',
-	line_dash = 'contact type',
-	grouped_legend = True,
-	hover_name = 'Measurement name',
 	log_y = True,
 	line_group = 'Measurement name',
-	hover_data = ['Fluence (neq/cm^2)/1e14','Temperature (°C)'],
-	labels = {
-		'Bias voltage (V) mean': 'Bias voltage (V)',
-		'Bias current (A) mean': 'Bias current (A)',
-	},
+	**PLOT_GRAPH_DIMENSIONS,
 )
 fig.write_html(str(utils.path_to_scripts_output_directory/Path('iv_curves.html')), include_plotlyjs = 'cdn')
 

@@ -6,7 +6,7 @@ import plotly.express as px
 import measurements_table as mt
 from calculate_interpixel_distance import script_core as calculate_interpixel_distance
 import datetime
-from inter_pixel_distance_analysis import SORT_VALUES_BY
+from inter_pixel_distance_analysis import SORT_VALUES_BY, PLOT_GRAPH_DIMENSIONS
 
 measurements_table_df = mt.create_measurements_table()
 
@@ -69,26 +69,14 @@ df = collected_charge_df.copy().reset_index()
 df = df.query('`Can we trust?`=="yes"')
 fig = utils.line(
 	data_frame = df,
-	line_group = 'Voltage scan measurement name',
 	x = 'Bias voltage (V)',
 	y = 'Collected charge (C) mean',
 	error_y = 'Collected charge (C) std',
 	error_y_mode = 'band',
-	facet_col = 'wafer',
-	facet_row = 'trenches',
-	text = 'Fluence (neq/cm^2)/1e14',
-	color = 'trench depth',
-	symbol = 'pixel border',
-	line_dash = 'contact type',
-	grouped_legend = True,
-	hover_name = 'Measurement name',
-	hover_data = ['Fluence (neq/cm^2)/1e14','Temperature (°C)'],
-	labels = {
-		'Collected charge (C) mean': 'Collected charge (C)',
-		'Fluence (neq/cm^2)/1e14': 'fluence (n<sub>eq</sub>/cm<sup>2</sup>×10<sup>-14</sup>)',
-	},
 	title = f'Collected charge vs bias voltage<br><sup>Plot updated: {datetime.datetime.now()}</sup>',
 	log_y = True,
+	line_group = 'Voltage scan measurement name',
+	**PLOT_GRAPH_DIMENSIONS,
 )
 fig.write_html(str(utils.path_to_scripts_output_directory/Path('collected_charge_vs_bias_voltage.html')), include_plotlyjs = 'cdn')
 

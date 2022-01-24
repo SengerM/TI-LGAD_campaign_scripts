@@ -5,7 +5,7 @@ from pathlib import Path
 import plotly.express as px
 import measurements_table as mt
 import datetime
-from inter_pixel_distance_analysis import SORT_VALUES_BY
+from inter_pixel_distance_analysis import SORT_VALUES_BY, PLOT_GRAPH_DIMENSIONS
 
 measurements_table_df = mt.create_measurements_table()
 
@@ -75,21 +75,8 @@ fig = utils.line(
 	line_group = 'Voltage scan measurement name',
 	x = 'Bias voltage (V)',
 	y = 'Time resolution (s)',
-	facet_col = 'wafer',
-	facet_row = 'trenches',
-	text = 'Fluence (neq/cm^2)/1e14',
-	color = 'trench depth',
-	symbol = 'pixel border',
-	line_dash = 'contact type',
-	grouped_legend = True,
-	hover_name = 'Measurement name',
-	hover_data = ['Fluence (neq/cm^2)/1e14','Temperature (°C)'],
-	labels = {
-		'Collected charge (C) mean': 'Collected charge (C)',
-		'Fluence (neq/cm^2)/1e14': 'fluence (n<sub>eq</sub>/cm<sup>2</sup>×10<sup>-14</sup>)',
-		'IPD with calibration (m)': 'IPD (m)',
-	},
 	title = f'Time resolution vs bias voltage<br><sup>Plot updated: {datetime.datetime.now()}</sup>',
+	**PLOT_GRAPH_DIMENSIONS,
 )
 fig.update_yaxes(range=[1e-12,66e-12])
 fig.write_html(str(utils.path_to_scripts_output_directory/Path('time_resolution_vs_bias_voltage.html')), include_plotlyjs = 'cdn')
