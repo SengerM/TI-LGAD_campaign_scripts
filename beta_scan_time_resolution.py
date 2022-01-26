@@ -8,6 +8,10 @@ import numpy as np
 import measurements_table as mt
 import grafica
 from scipy.stats import median_abs_deviation
+from scipy.optimize import curve_fit
+
+def gaussian(x, mu, sigma, amplitude=1):
+	return amplitude/sigma/(2*np.pi)**.5*np.exp(-((x-mu)/sigma)**2/2)
 
 def display_dataframe(df):
 	print(df)
@@ -169,6 +173,24 @@ def plot_Delta_t_histogram(Delta_t_df, k1, k2):
 	)
 	return fig
 
+def fit_gaussian_to_samples(samples, bins='auto'):
+	hist, bins_edges = np.histogram(
+		samples, 
+		bins = bins,
+	)
+	x_values = bins_edges[:-1] + np.diff(bins_edges)[0]/2
+	y_values = hist
+	try:
+		popt, pcov = curve_fit(
+			gaussian,
+			x_values,
+			y_values,
+			p0 = [np.median(samples),median_abs_deviation(samples)*utils.k_MAD_TO_STD,max(y_values)],
+		)
+		return popt[0], popt[1], popt[2]
+	except RuntimeError: # This happens when the fit fails because there are very few samples.
+		return float('NaN'),float('NaN'),float('NaN')
+
 def script_core(measurement_name: str, force=False, n_bootstrap=0):
 	if not mt.retrieve_measurement_type(measurement_name) == 'beta scan':
 		raise ValueError(f'Measurement must be a `beta scan` but measurement named {repr(measurement_name)} is a {repr(mt.retrieve_measurement_type(measurement_name))}.')
@@ -195,6 +217,7 @@ def script_core(measurement_name: str, force=False, n_bootstrap=0):
 		for idx,n_channel in enumerate(channels):
 			measured_data_df.loc[measured_data_df['n_channel']==n_channel,'n_pulse'] = idx+1
 		
+		final_results_df = pandas.DataFrame()
 		bootstrapped_replicas_df = pandas.DataFrame()
 		for k_bootstrap in range(n_bootstrap+1):
 			
@@ -210,22 +233,34 @@ def script_core(measurement_name: str, force=False, n_bootstrap=0):
 			Delta_t_df = calculate_Delta_t_df(data_df)
 			Delta_t_fluctuations_df = calculate_Delta_t_fluctuations_df(Delta_t_df)
 			best_k1k2 = find_best_k1_k2(Delta_t_fluctuations_df)
+			fitted_mu, fitted_sigma, fitted_amplitude = fit_gaussian_to_samples(Delta_t_df.set_index(['k_1 (%)','k_2 (%)']).loc[best_k1k2,'Δt (s)'])
+			std = Delta_t_df.set_index(['k_1 (%)','k_2 (%)']).loc[best_k1k2,'Δt (s)'].std()
 			
+			bootstrapped_replicas_df = bootstrapped_replicas_df.append(
+				{
+					'k MAD(Δt) (s)': Delta_t_fluctuations_df.loc[best_k1k2,'k MAD(Δt) (s)'],
+					'std (s)': std,
+					'sigma from Gaussian fit (s)': fitted_sigma,
+					'k_1 (%)': best_k1k2[0],
+					'k_2 (%)': best_k1k2[1],
+				},
+				ignore_index = True,
+			)
 			if bootstrapped_iteration == True:
-				bootstrapped_replicas_df = bootstrapped_replicas_df.append(
-					{
-						'k MAD(Δt) (s)': Delta_t_fluctuations_df.loc[best_k1k2,'k MAD(Δt) (s)'],
-						'k_1 (%)': best_k1k2[0],
-						'k_2 (%)': best_k1k2[1],
-					},
-					ignore_index = True,
-				)
 				continue
 			
-			with open(bureaucrat.processed_data_dir_path/Path('final_result.txt'), 'w') as ofile:
-				print(f"k MAD(Δt) (s) = {Delta_t_fluctuations_df.loc[best_k1k2,'k MAD(Δt) (s)']}", file=ofile)
-				for idx,k in enumerate(best_k1k2):
-					print(f'constant fraction discriminator threshold k_{idx+1} (%) = {int(k)}', file=ofile)
+			# If we are here it is because we are not in a bootstrap iteration, it is the first iteration that is with the actual data.
+			final_results_df = final_results_df.append(
+				{
+					'k MAD(Δt) (s)': Delta_t_fluctuations_df.loc[best_k1k2,'k MAD(Δt) (s)'],
+					'std (s)': std,
+					'sigma from Gaussian fit (s)': fitted_sigma,
+					'k_1 (%)': best_k1k2[0],
+					'k_2 (%)': best_k1k2[1],
+					'type': 'estimator value on the data',
+				},
+				ignore_index = True,
+			)
 			
 			fig = plot_cfd(Delta_t_fluctuations_df)
 			fig.update_layout(
@@ -237,8 +272,15 @@ def script_core(measurement_name: str, force=False, n_bootstrap=0):
 				ylabel = 'Number of events',
 				xlabel = 'Δt (s)',
 			)
+			samples_for_plot = list(Delta_t_df.loc[(Delta_t_df['k_1 (%)']==best_k1k2[0])&(Delta_t_df['k_2 (%)']==best_k1k2[1]),'Δt (s)'])
 			fig.histogram(
-				samples = list(Delta_t_df.loc[(Delta_t_df['k_1 (%)']==best_k1k2[0])&(Delta_t_df['k_2 (%)']==best_k1k2[1]),'Δt (s)']),
+				samples = samples_for_plot,
+			)
+			x_axis_values = sorted(pandas.Series(samples_for_plot).sample(n=99))
+			fig.scatter(
+				x = x_axis_values,
+				y = gaussian(x_axis_values, fitted_mu, fitted_sigma, fitted_amplitude),
+				label = 'Fitted Gaussian',
 			)
 			draw_median_and_MAD_vertical_lines(
 				plotlyfig = fig.plotly_figure,
@@ -259,15 +301,34 @@ def script_core(measurement_name: str, force=False, n_bootstrap=0):
 			)
 		bootstrapped_replicas_df.to_csv(bootstrapped_replicas_df_file_path, index=False)
 		
+		stuff_to_append = dict(bootstrapped_replicas_df.std())
+		stuff_to_append['type'] = 'std of the bootstrapped replicas'
+		final_results_df = final_results_df.append(
+			stuff_to_append,
+			ignore_index = True,
+		)
+		
 		fig = grafica.new(
 			title = f'Bootstrap replicas of k MAD(Δt)<br><sup>Measurement: {bureaucrat.measurement_name}</sup>',
-			xlabel = 'k MAD(Δt) (s)',
+			xlabel = 'Estimation of σ (s)',
 			ylabel = 'Number of events',
 		)
 		fig.histogram(
 			samples = bootstrapped_replicas_df['k MAD(Δt) (s)'],
+			label = 'k MAD(Δt)',
+		)
+		fig.histogram(
+			samples = bootstrapped_replicas_df['sigma from Gaussian fit (s)'],
+			label = 'sigma from Gaussian fit',
+		)
+		fig.histogram(
+			samples = bootstrapped_replicas_df['std (s)'],
+			label = 'std',
 		)
 		fig.save(file_name = str(bureaucrat.processed_data_dir_path/Path(f'histogram bootstrap.html')))
+		
+		
+		final_results_df.to_csv(bureaucrat.processed_data_dir_path/Path('results.csv'), index=False)
 
 if __name__ == '__main__':
 	import argparse
