@@ -32,8 +32,13 @@ PLOT_GRAPH_DIMENSIONS = dict(
 		'Collected charge (C) mean': 'Collected charge (C)',
 		'Fluence (neq/cm^2)/1e14': 'fluence (n<sub>eq</sub>/cm<sup>2</sup>×10<sup>-14</sup>)',
 		'IPD with (m) calibrated': 'IPD (m)',
+		'Annealing time label': 'Annealing time (days)',
 	},
+	text = 'Annealing time label',
 )
+
+def annealing_time_to_label_for_the_plot(annealing_time):
+	return '' if pandas.isnull(annealing_time) or annealing_time < datetime.timedelta(1) else f'{annealing_time.days}'
 
 if __name__ == '__main__':
 	measurements_table_df = mt.create_measurements_table()
@@ -85,6 +90,7 @@ if __name__ == '__main__':
 				'Distance calibration factor':this_measurement_calibration_factor,
 				'Voltage scan measurement name': this_measurement_belongs_to_the_voltage_scan,
 				'Fluence (neq/cm^2)/1e14': mt.get_measurement_fluence(measurement_name)/1e14,
+				'Annealing time': mt.get_measurement_annealing_time(measurement_name),
 			},
 			ignore_index = True,
 		)
@@ -107,6 +113,7 @@ if __name__ == '__main__':
 
 	df = interpixel_distances_df.copy().reset_index()
 	df = df.query('`Can we trust?`=="yes"')
+	df['Annealing time label'] = df['Annealing time'].apply(annealing_time_to_label_for_the_plot)
 	for col in {'IPD (m)','IPD std bootstrap (m)'}:
 		df[f'{col} calibrated'] = df[col]*df['Distance calibration factor']
 	fig = utils.line(

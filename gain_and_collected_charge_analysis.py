@@ -6,7 +6,7 @@ import plotly.express as px
 import measurements_table as mt
 from calculate_interpixel_distance import script_core as calculate_interpixel_distance
 import datetime
-from inter_pixel_distance_analysis import SORT_VALUES_BY, PLOT_GRAPH_DIMENSIONS
+from inter_pixel_distance_analysis import SORT_VALUES_BY, PLOT_GRAPH_DIMENSIONS, annealing_time_to_label_for_the_plot
 
 measurements_table_df = mt.create_measurements_table()
 
@@ -45,6 +45,7 @@ for measurement_name in measurements_table_df.query('Type=="scan 1D"').index:
 			'Collected charge (C) mean': _df['Collected charge (C) mean'].mean(),
 			'Collected charge (C) std': _df['Collected charge (C) std'].mean(),
 			'Fluence (neq/cm^2)/1e14': mt.get_measurement_fluence(measurement_name)/1e14,
+			'Annealing time': mt.get_measurement_annealing_time(measurement_name),
 		},
 		ignore_index = True,
 	)
@@ -67,6 +68,7 @@ collected_charge_df = collected_charge_df.sort_values(
 
 df = collected_charge_df.copy().reset_index()
 df = df.query('`Can we trust?`=="yes"')
+df['Annealing time label'] = df['Annealing time'].apply(annealing_time_to_label_for_the_plot)
 fig = utils.line(
 	data_frame = df,
 	x = 'Bias voltage (V)',

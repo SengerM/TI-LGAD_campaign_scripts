@@ -4,7 +4,7 @@ import utils
 import pandas
 import plotly.express as px
 import datetime
-from inter_pixel_distance_analysis import SORT_VALUES_BY, PLOT_GRAPH_DIMENSIONS
+from inter_pixel_distance_analysis import SORT_VALUES_BY, PLOT_GRAPH_DIMENSIONS, annealing_time_to_label_for_the_plot
 
 NICE_MEASUREMENTS = {
 	'20211114162042_#34_IV_curve',
@@ -75,6 +75,7 @@ mean_std_df.reset_index(inplace=True)
 mean_std_df.set_index('Measurement name', inplace=True)
 for measurement_name in mean_std_df.index:
 	mean_std_df.loc[measurement_name, 'Fluence (neq/cm^2)/1e14'] = str(int(mt.get_measurement_fluence(measurement_name)/1e14))
+	mean_std_df.loc[measurement_name, 'Annealing time'] = mt.get_measurement_annealing_time(measurement_name)
 	mean_std_df.loc[measurement_name, 'Temperature (°C)'] = mt.retrieve_measurement_temperature(measurement_name)
 mean_std_df.reset_index(inplace=True)
 
@@ -85,6 +86,7 @@ mean_std_df = mean_std_df.sort_values(
 	ascending = True,
 )
 
+mean_std_df['Annealing time label'] = mean_std_df['Annealing time'].apply(annealing_time_to_label_for_the_plot)
 fig = utils.line(
 	title = f'IV curves<br><sup>Plot updated: {datetime.datetime.now()}</sup>',
 	data_frame = mean_std_df,

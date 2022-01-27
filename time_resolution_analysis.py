@@ -5,7 +5,7 @@ from pathlib import Path
 import plotly.express as px
 import measurements_table as mt
 import datetime
-from inter_pixel_distance_analysis import SORT_VALUES_BY, PLOT_GRAPH_DIMENSIONS
+from inter_pixel_distance_analysis import SORT_VALUES_BY, PLOT_GRAPH_DIMENSIONS, annealing_time_to_label_for_the_plot
 
 measurements_table_df = mt.create_measurements_table()
 
@@ -50,6 +50,7 @@ for measurement_name in scans_and_sub_measurements_df.index:
 			'k_2 (%)': this_measurement_k2,
 			'Measurement name': measurement_name,
 			'Fluence (neq/cm^2)/1e14': mt.get_measurement_fluence(measurement_name)/1e14,
+			'Annealing time': mt.get_measurement_annealing_time(measurement_name),
 		},
 		ignore_index = True,
 	)
@@ -70,6 +71,7 @@ time_resolution_df = time_resolution_df.sort_values(
 
 df = time_resolution_df.reset_index()
 df = df.query('`Can we trust?`=="yes"')
+df['Annealing time label'] = df['Annealing time'].apply(annealing_time_to_label_for_the_plot)
 fig = utils.line(
 	data_frame = df,
 	line_group = 'Voltage scan measurement name',
