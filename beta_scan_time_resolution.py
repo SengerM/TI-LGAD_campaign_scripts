@@ -276,7 +276,7 @@ def script_core(measurement_name: str, force=False, n_bootstrap=0):
 			fig.histogram(
 				samples = samples_for_plot,
 			)
-			x_axis_values = sorted(pandas.Series(samples_for_plot).sample(n=99))
+			x_axis_values = sorted(list(np.linspace(min(samples_for_plot),max(samples_for_plot),99)) + list(pandas.Series(samples_for_plot).sample(n=99)))
 			fig.scatter(
 				x = x_axis_values,
 				y = gaussian(x_axis_values, fitted_mu, fitted_sigma, fitted_amplitude),
