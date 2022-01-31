@@ -55,44 +55,80 @@ def script_core(directory):
 	for n_channel in sorted(set(satisfies.columns)):
 		temp_df &= satisfies[n_channel]
 	measured_data_df = measured_data_df.set_index('n_trigger')
-	measured_data_df['Satisfy t_50 filter?'] = temp_df
+	measured_data_df['Satisfies t_50 filter?'] = temp_df
 	measured_data_df = measured_data_df.reset_index()
 	
-	for column in {'t_50 (s)'}:
+	for column in measured_data_df:
+		if column in {'n_trigger','When','n_channel','Satisfies t_50 filter?'}:
+			continue
 		histogram_fig = px.histogram(
 			measured_data_df,
 			x = column,
-			color = 'n_channel',
+			facet_row = 'n_channel',
 			opacity = .75,
 			title = f'{column}<br><sup>Measurement: {bureaucrat.measurement_name}</sup>',
-			pattern_shape = 'Satisfy t_50 filter?',
+			pattern_shape = 'Satisfies t_50 filter?',
+			pattern_shape_map = {False: 'x', True: ''},
 			marginal = 'rug',
 		)
-		ecdf_fig = px.ecdf(
-			measured_data_df,
-			x = column,
-			color = 'n_channel',
-			title = f'{column}<br><sup>Measurement: {bureaucrat.measurement_name}</sup>',
-			marginal = 'histogram',
-		)
-		for n_channel in sorted(set(measured_data_df['n_channel'])):
-			for fig in [histogram_fig, ecdf_fig]:
-				fig.add_vrect(
-					x0 = cuts_df.loc[n_channel, 't_50 lower cut (s)'],
-					x1 = cuts_df.loc[n_channel, 't_50 higher cut (s)'],
-					opacity = .25,
-					line_width = 0,
-					fillcolor = 'black',
-					annotation_text = f'CH{n_channel} acceptance region',
-					textangle = -90,
-				)
+		if column == 't_50 (s)':
+			ecdf_fig = px.ecdf(
+				measured_data_df,
+				x = column,
+				color = 'n_channel',
+				title = f'{column}<br><sup>Measurement: {bureaucrat.measurement_name}</sup>',
+				marginal = 'histogram',
+			)
+			ecdf_fig.write_html(
+				str(bureaucrat.processed_data_dir_path/Path(f'{column} ECDF.html')),
+				include_plotlyjs = 'cdn',
+			)
+			for n_channel in sorted(set(measured_data_df['n_channel'])):
+				for fig in [histogram_fig, ecdf_fig]:
+					fig.add_vrect(
+						x0 = cuts_df.loc[n_channel, 't_50 lower cut (s)'],
+						x1 = cuts_df.loc[n_channel, 't_50 higher cut (s)'],
+						opacity = .25,
+						line_width = 0,
+						fillcolor = 'black',
+						annotation_text = f'Acceptance region CH{n_channel}',
+						annotation_textangle = -90,
+					)
 		
 		histogram_fig.write_html(
 			str(bureaucrat.processed_data_dir_path/Path(f'{column} histogram.html')),
 			include_plotlyjs = 'cdn',
 		)
-		ecdf_fig.write_html(
-			str(bureaucrat.processed_data_dir_path/Path(f'{column} ECDF.html')),
+	
+	columns_for_scatter_matrix_plot = set(measured_data_df.columns) - {'n_trigger','When','n_channel','Satisfies t_50 filter?','Noise (V)','Time over 20% (s)'} - {f't_{i*10} (s)' for i in [1,2,3,4,6,7,8,9]}
+	df = measured_data_df
+	df['n_channel'] = df['n_channel'].astype(str) # This is so the color scale is discrete.
+	fig = px.scatter_matrix(
+		df,
+		dimensions = sorted(columns_for_scatter_matrix_plot),
+		title = f'Scatter matrix plot<br><sup>Measurement: {bureaucrat.measurement_name}</sup>',
+		color = 'n_channel',
+		symbol = 'Satisfies t_50 filter?',
+		symbol_map = {True: 'circle', False: 'x'},
+		hover_data = ['n_trigger','Satisfies t_50 filter?'],
+	)
+	fig.update_traces(diagonal_visible=False, showupperhalf=False)
+	for k in range(len(fig.data)):
+		fig.data[k].update(
+			selected = dict(
+				marker = dict(
+					opacity = 1,
+					color = 'black',
+				)
+			),
+			# ~ unselected = dict(
+				# ~ marker = dict(
+					# ~ opacity = 0.01
+				# ~ )
+			# ~ ),
+		)
+	fig.write_html(
+			str(bureaucrat.processed_data_dir_path/Path('scatter matrix')) + '.html',
 			include_plotlyjs = 'cdn',
 		)
 	
