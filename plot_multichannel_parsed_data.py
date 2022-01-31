@@ -97,7 +97,7 @@ if __name__ == '__main__':
 
 	args = parser.parse_args()
 	if args.directory.lower() != 'all':
-		script_core(Path(args.directory).parts[-1])
+		script_core(Path(args.directory))
 	else:
 		measurements_table_df = mt.create_measurements_table()
 		for measurement_name in sorted(measurements_table_df.index)[::-1]:
