@@ -19,8 +19,8 @@ def t_50_find_cuts(measured_data_df, n_channel):
 	d2ECDFdt_50_2 = interpolated_ecdf.derivative().derivative()(t_50_axis)
 	t_50_center = t_50_axis[np.argmax(dECDFdt_50)]
 	t_50_peak_width = t_50_axis[np.argmin(d2ECDFdt_50_2)] - t_50_axis[np.argmax(d2ECDFdt_50_2)]
-	t_50_low_cut = t_50_center - t_50_peak_width
-	t_50_high_cut = t_50_center + t_50_peak_width
+	t_50_low_cut = t_50_center - t_50_peak_width*2
+	t_50_high_cut = t_50_center + t_50_peak_width*2
 	return t_50_low_cut, t_50_high_cut
 
 def apply_cuts(data_df, cuts_df):
@@ -57,7 +57,7 @@ def apply_cuts(data_df, cuts_df):
 	filter_result = True
 	for col in filtered_df.columns:
 		filter_result &= filtered_df[col]
-	return filter_result
+	return filter_result.rename('accepted?')
 
 def script_core(directory):
 	bureaucrat = Bureaucrat(
@@ -65,105 +65,111 @@ def script_core(directory):
 		variables = locals(),
 	)
 	
+	plots_dir_path = bureaucrat.processed_data_dir_path/Path('plots')
+	plots_dir_path.mkdir(exist_ok=True, parents=True)
+	
 	try:
 		measured_data_df = pandas.read_feather(bureaucrat.processed_by_script_dir_path('acquire_and_parse_with_oscilloscope.py')/Path('measured_data.fd'))
 	except FileNotFoundError:
 		measured_data_df = pandas.read_csv(bureaucrat.processed_by_script_dir_path('acquire_and_parse_with_oscilloscope.py')/Path('measured_data.csv'))
 	
-	cuts_df = pandas.DataFrame(columns=['n_channel','cut type'])
-	for n_channel in sorted(set(measured_data_df['n_channel'])):
-		lower_cut, higher_cut = t_50_find_cuts(measured_data_df, n_channel)
-		for name, cut in {'lower': lower_cut, 'higher': higher_cut}.items():
-			cuts_df = cuts_df.append(
-				{
-					'n_channel': n_channel,
-					'cut type': name,
-					't_50 (s)': cut,
-					'Collected charge (V s)': 2.5e-12 if name=='lower' else measured_data_df['Collected charge (V s)'].max(), # For testing---
-				},
-				ignore_index = True,
-			)
-	cuts_df.to_csv(bureaucrat.processed_data_dir_path/Path(f't_50_cuts.csv'))
-	
-	filtered_triggers_df = apply_cuts(measured_data_df, cuts_df)
-	measured_data_df = measured_data_df.set_index('n_trigger')
-	measured_data_df['Accepted?'] = filtered_triggers_df
-	measured_data_df = measured_data_df.reset_index()
-	
-	# ~ triggers_filter_df.reset_index().to_feather(bureaucrat.processed_data_dir_path/Path(f'passes_filter.fd'))
-	
-	for column in measured_data_df:
-		if column in {'n_trigger','When','n_channel','Accepted?'}:
-			continue
-		histogram_fig = px.histogram(
-			measured_data_df,
-			x = column,
-			facet_row = 'n_channel',
-			opacity = .75,
-			title = f'{column}<br><sup>Measurement: {bureaucrat.measurement_name}</sup>',
-			pattern_shape = 'Accepted?',
-			pattern_shape_map = {False: 'x', True: ''},
-			marginal = 'rug',
-		)
-		if column in cuts_df.columns:
-			ecdf_fig = px.ecdf(
+	with bureaucrat.verify_no_errors_context():
+		cuts_df = pandas.DataFrame(columns=['n_channel','cut type'])
+		for n_channel in sorted(set(measured_data_df['n_channel'])):
+			lower_cut, higher_cut = t_50_find_cuts(measured_data_df, n_channel)
+			for name, cut in {'lower': lower_cut, 'higher': higher_cut}.items():
+				cuts_df = cuts_df.append(
+					{
+						'n_channel': n_channel,
+						'cut type': name,
+						't_50 (s)': cut,
+						'Collected charge (V s)': 2.5e-12 if name=='lower' else measured_data_df['Collected charge (V s)'].max(), # For testing---
+					},
+					ignore_index = True,
+				)
+		cuts_df.to_csv(bureaucrat.processed_data_dir_path/Path(f'cuts.csv'))
+		
+		filtered_triggers_df = apply_cuts(measured_data_df, cuts_df)
+		measured_data_df = measured_data_df.set_index('n_trigger')
+		measured_data_df['Accepted?'] = filtered_triggers_df
+		measured_data_df = measured_data_df.reset_index()
+		
+		filtered_triggers_df.reset_index().to_feather(bureaucrat.processed_data_dir_path/Path('filtered_triggers.fd'))
+		
+		for column in measured_data_df:
+			if column in {'n_trigger','When','n_channel','Accepted?'}:
+				continue
+			histogram_fig = px.histogram(
 				measured_data_df,
 				x = column,
-				color = 'n_channel',
+				facet_col = 'n_channel',
+				opacity = .75,
 				title = f'{column}<br><sup>Measurement: {bureaucrat.measurement_name}</sup>',
-				marginal = 'histogram',
+				color = 'Accepted?',
+				color_discrete_map = {False: 'red', True: 'green'},
+				pattern_shape_map = {False: 'x', True: ''},
+				marginal = 'rug',
 			)
-			for n_channel in sorted(set(measured_data_df['n_channel'])):
-				for fig in [histogram_fig, ecdf_fig]:
-					fig.add_vrect(
-						x0 = float(cuts_df.loc[(cuts_df['n_channel']==n_channel)&(cuts_df['cut type']=='lower'), column]),
-						x1 = float(cuts_df.loc[(cuts_df['n_channel']==n_channel)&(cuts_df['cut type']=='higher'), column]),
-						opacity = .25,
-						line_width = 0,
-						fillcolor = 'black',
-						annotation_text = f'CH{n_channel} ✔️',
-					)
-			ecdf_fig.write_html(
-				str(bureaucrat.processed_data_dir_path/Path(f'{column} ECDF.html')),
+			if column in cuts_df.columns:
+				ecdf_fig = px.ecdf(
+					measured_data_df,
+					x = column,
+					color = 'n_channel',
+					title = f'{column}<br><sup>Measurement: {bureaucrat.measurement_name}</sup>',
+					marginal = 'histogram',
+				)
+				for n_channel in sorted(set(measured_data_df['n_channel'])):
+					for fig in [histogram_fig, ecdf_fig]:
+						fig.add_vrect(
+							x0 = float(cuts_df.loc[(cuts_df['n_channel']==n_channel)&(cuts_df['cut type']=='lower'), column]),
+							x1 = float(cuts_df.loc[(cuts_df['n_channel']==n_channel)&(cuts_df['cut type']=='higher'), column]),
+							opacity = .1,
+							line_width = 0,
+							fillcolor = 'black',
+							annotation_text = f'CH{n_channel} ✔️',
+						)
+				ecdf_fig.write_html(
+					str(plots_dir_path/Path(f'{column} ECDF.html')),
+					include_plotlyjs = 'cdn',
+				)
+			
+			histogram_fig.write_html(
+				str(plots_dir_path/Path(f'{column} histogram.html')),
 				include_plotlyjs = 'cdn',
 			)
 		
-		histogram_fig.write_html(
-			str(bureaucrat.processed_data_dir_path/Path(f'{column} histogram.html')),
-			include_plotlyjs = 'cdn',
+		columns_for_scatter_matrix_plot = set(measured_data_df.columns) - {'n_trigger','When','n_channel','Accepted?','Noise (V)','Time over 20% (s)'} - {f't_{i*10} (s)' for i in [1,2,3,4,6,7,8,9]}
+		df = measured_data_df
+		df['n_channel'] = df['n_channel'].astype(str) # This is so the color scale is discrete.
+		fig = px.scatter_matrix(
+			df,
+			dimensions = sorted(columns_for_scatter_matrix_plot),
+			title = f'Scatter matrix plot<br><sup>Measurement: {bureaucrat.measurement_name}</sup>',
+			symbol = 'n_channel',
+			color = 'Accepted?',
+			color_discrete_map = {False: 'red', True: 'green'},
+			symbol_map = {True: 'circle', False: 'x'},
+			hover_data = ['n_trigger'],
 		)
-	
-	columns_for_scatter_matrix_plot = set(measured_data_df.columns) - {'n_trigger','When','n_channel','Accepted?','Noise (V)','Time over 20% (s)'} - {f't_{i*10} (s)' for i in [1,2,3,4,6,7,8,9]}
-	df = measured_data_df
-	df['n_channel'] = df['n_channel'].astype(str) # This is so the color scale is discrete.
-	fig = px.scatter_matrix(
-		df,
-		dimensions = sorted(columns_for_scatter_matrix_plot),
-		title = f'Scatter matrix plot<br><sup>Measurement: {bureaucrat.measurement_name}</sup>',
-		color = 'n_channel',
-		symbol = 'Accepted?',
-		symbol_map = {True: 'circle', False: 'x'},
-		hover_data = ['n_trigger'],
-	)
-	fig.update_traces(diagonal_visible=False, showupperhalf=False)
-	for k in range(len(fig.data)):
-		fig.data[k].update(
-			selected = dict(
-				marker = dict(
-					opacity = 1,
-					color = 'black',
-				)
-			),
-			# ~ unselected = dict(
-				# ~ marker = dict(
-					# ~ opacity = 0.01
-				# ~ )
-			# ~ ),
-		)
-	fig.write_html(
-			str(bureaucrat.processed_data_dir_path/Path('scatter matrix')) + '.html',
-			include_plotlyjs = 'cdn',
-		)
+		fig.update_traces(diagonal_visible=False, showupperhalf=False)
+		for k in range(len(fig.data)):
+			fig.data[k].update(
+				selected = dict(
+					marker = dict(
+						opacity = 1,
+						color = 'black',
+					)
+				),
+				# ~ unselected = dict(
+					# ~ marker = dict(
+						# ~ opacity = 0.01
+					# ~ )
+				# ~ ),
+			)
+		fig.write_html(
+				str(plots_dir_path/Path('scatter matrix')) + '.html',
+				include_plotlyjs = 'cdn',
+			)
 	
 ########################################################################
 
