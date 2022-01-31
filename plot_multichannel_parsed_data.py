@@ -5,7 +5,7 @@ import plotly.graph_objects as go
 import plotly.express as px
 import numpy as np
 from statsmodels.distributions.empirical_distribution import ECDF
-from scipy.interpolate import InterpolatedUnivariateSpline #from scipy.interpolate import interp1d
+from scipy.interpolate import InterpolatedUnivariateSpline
 from scipy.misc import derivative
 
 def script_core(directory):
