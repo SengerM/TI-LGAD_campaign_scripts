@@ -18,7 +18,7 @@ def t_50_find_cuts(measured_data_df, n_channel):
 	dECDFdt_50 = interpolated_ecdf.derivative()(t_50_axis)
 	d2ECDFdt_50_2 = interpolated_ecdf.derivative().derivative()(t_50_axis)
 	t_50_center = t_50_axis[np.argmax(dECDFdt_50)]
-	t_50_peak_width = t_50_axis[np.argmax(d2ECDFdt_50_2)] - t_50_axis[np.argmin(d2ECDFdt_50_2)]
+	t_50_peak_width = t_50_axis[np.argmin(d2ECDFdt_50_2)] - t_50_axis[np.argmax(d2ECDFdt_50_2)]
 	t_50_low_cut = t_50_center - t_50_peak_width
 	t_50_high_cut = t_50_center + t_50_peak_width
 	return t_50_low_cut, t_50_high_cut
@@ -44,14 +44,28 @@ def script_core(directory):
 	cuts_df = cuts_df.set_index('n_channel')
 	cuts_df.to_csv(bureaucrat.processed_data_dir_path/Path(f't_50_cuts.csv'))
 	
+	# Tag events that satisfy the t_50 filter ---
+	t_50_data_df = measured_data_df.pivot(
+		index = 'n_trigger',
+		columns = 'n_channel',
+		values = 't_50 (s)',
+	)
+	satisfies = (t_50_data_df<=cuts_df['t_50 higher cut (s)'])&(t_50_data_df>=cuts_df['t_50 lower cut (s)'])
+	temp_df = satisfies[sorted(set(satisfies.columns))[0]]
+	for n_channel in sorted(set(satisfies.columns)):
+		temp_df &= satisfies[n_channel]
+	measured_data_df = measured_data_df.set_index('n_trigger')
+	measured_data_df['Satisfy t_50 filter?'] = temp_df
+	measured_data_df = measured_data_df.reset_index()
+	
 	for column in {'t_50 (s)'}:
 		histogram_fig = px.histogram(
 			measured_data_df,
 			x = column,
 			color = 'n_channel',
-			barmode = 'overlay',
 			opacity = .75,
 			title = f'{column}<br><sup>Measurement: {bureaucrat.measurement_name}</sup>',
+			pattern_shape = 'Satisfy t_50 filter?',
 			marginal = 'rug',
 		)
 		ecdf_fig = px.ecdf(
@@ -69,7 +83,8 @@ def script_core(directory):
 					opacity = .25,
 					line_width = 0,
 					fillcolor = 'black',
-					annotation_text = f'CH{n_channel}',
+					annotation_text = f'CH{n_channel} acceptance region',
+					textangle = -90,
 				)
 		
 		histogram_fig.write_html(
@@ -99,7 +114,7 @@ if __name__ == '__main__':
 
 	args = parser.parse_args()
 	if args.directory.lower() != 'all':
-		script_core(Path(args.directory).parts[-1])
+		script_core(Path(args.directory))
 	else:
 		measurements_table_df = mt.create_measurements_table()
 		for measurement_name in sorted(measurements_table_df.index)[::-1]:
