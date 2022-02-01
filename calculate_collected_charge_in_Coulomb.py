@@ -5,6 +5,7 @@ from pathlib import Path
 import plotly.express as px
 import plotly.graph_objects as go
 import measurements_table as mt
+from scipy.stats import median_abs_deviation
 
 def script_core(measurement_name: str, force=False):
 	if not mt.retrieve_measurement_type(measurement_name) == 'scan 1D':
@@ -42,6 +43,8 @@ def script_core(measurement_name: str, force=False):
 			for unit in {'V s','C'}:
 				collected_charge_statistics_df.loc[pad,f'Collected charge ({unit}) mean'] = useful_data_df.query(f'Pad=="{pad}"')[f'Collected charge ({unit})'].mean()
 				collected_charge_statistics_df.loc[pad,f'Collected charge ({unit}) std'] = useful_data_df.query(f'Pad=="{pad}"')[f'Collected charge ({unit})'].std()
+				collected_charge_statistics_df.loc[pad,f'Collected charge ({unit}) median'] = useful_data_df.query(f'Pad=="{pad}"')[f'Collected charge ({unit})'].median()
+				collected_charge_statistics_df.loc[pad,f'Collected charge ({unit}) MAD_std'] = utils.k_MAD_TO_STD*median_abs_deviation(useful_data_df.query(f'Pad=="{pad}"')[f'Collected charge ({unit})'], nan_policy='omit')
 		collected_charge_statistics_df.to_csv(bureaucrat.processed_data_dir_path/Path('collected_charge_statistics.csv'))
 		
 		with open(bureaucrat.processed_data_dir_path/Path('calibration_measurement_used.txt'), 'w') as ofile:
@@ -50,30 +53,31 @@ def script_core(measurement_name: str, force=False):
 		# Plot ---
 		averaged_df = utils.mean_std(measured_data_df, by=['n_position','Pad'])
 		for charge_units in ['V s','C']:
-			fig = utils.line(
-				title = f'Collected charge in units of "{charge_units}"<br><sup>Measurement: {measurement_name}</sup>',
-				data_frame = averaged_df,
-				x = 'Distance - offset (m) mean',
-				y = f'Collected charge ({charge_units}) mean',
-				error_y = f'Collected charge ({charge_units}) std',
-				error_y_mode = 'band',
-				color = 'Pad',
-				labels = {
-					'Distance - offset (m) mean': 'Distance - offset (m)',
-					f'Collected charge ({charge_units}) mean': f'Collected charge ({charge_units})',
-					'Pad': 'Pixel',
-				}
-			)
-			for pad in ['left','right']:
-				fig.add_trace(
-					go.Scatter(
-						x = useful_data_df.query(f'Pad=="{pad}"')['Distance - offset (m)'],
-						y = useful_data_df.query(f'Pad=="{pad}"')[f'Collected charge ({charge_units})'],
-						name = f'{pad} data',
-						mode = 'markers',
-					)
+			for statistics in [('median','MAD_std')]:
+				fig = utils.line(
+					title = f'Collected charge in units of "{charge_units}"<br><sup>Measurement: {measurement_name}</sup>',
+					data_frame = averaged_df,
+					x = 'Distance - offset (m) mean',
+					y = f'Collected charge ({charge_units}) {statistics[0]}',
+					error_y = f'Collected charge ({charge_units}) {statistics[1]}',
+					error_y_mode = 'band',
+					color = 'Pad',
+					labels = {
+						'Distance - offset (m) mean': 'Distance - offset (m)',
+						# ~ f'Collected charge ({charge_units}) mean': f'Collected charge ({charge_units})',
+						'Pad': 'Pixel',
+					}
 				)
-			fig.write_html(str(bureaucrat.processed_data_dir_path/Path(f'collected charge in units of {charge_units}.html'.replace(' ','_'))), include_plotlyjs = 'cdn')
+				for pad in ['left','right']:
+					fig.add_trace(
+						go.Scatter(
+							x = useful_data_df.query(f'Pad=="{pad}"')['Distance - offset (m)'],
+							y = useful_data_df.query(f'Pad=="{pad}"')[f'Collected charge ({charge_units})'],
+							name = f'{pad} data',
+							mode = 'markers',
+						)
+					)
+				fig.write_html(str(bureaucrat.processed_data_dir_path/Path(f'collected charge in units of {charge_units} using {statistics}.html'.replace(' ','_'))), include_plotlyjs = 'cdn')
 	
 if __name__ == '__main__':
 	import argparse
@@ -89,7 +93,7 @@ if __name__ == '__main__':
 	)
 	args = parser.parse_args()
 	if args.directory.lower() != 'all':
-		script_core(Path(args.directory).parts[-1])
+		script_core(Path(args.directory).parts[-1], force=True)
 	else:
 		measurements_table_df = mt.create_measurements_table()
 		for measurement_name in sorted(measurements_table_df.index)[::-1]:
