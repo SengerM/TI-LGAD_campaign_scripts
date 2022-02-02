@@ -40,7 +40,9 @@ def apply_cuts(data_df, cuts_df):
 	of the variables in any of the channels is outside the range, it will
 	be `False`.
 	"""
-	
+	for n_channel in set(cuts_df['n_channel']):
+		if n_channel not in set(data_df['n_channel']):
+			raise ValueError(f'There is a cut in `n_channel={n_channel}` but the measured data does not contain this channel, measured channels are {set(data_df["n_channel"])}.')
 	data_df = data_df.pivot(
 		index = 'n_trigger',
 		columns = 'n_channel',
