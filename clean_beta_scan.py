@@ -95,6 +95,7 @@ def script_core(directory):
 				color_discrete_map = {False: 'red', True: 'green'},
 				pattern_shape_map = {False: 'x', True: ''},
 				marginal = 'rug',
+				hover_data = ['n_trigger'],
 			)
 			if column in set(cuts_df['variable']):
 				ecdf_fig = px.ecdf(
@@ -104,6 +105,7 @@ def script_core(directory):
 					title = f'{column}<br><sup>Measurement: {bureaucrat.measurement_name}</sup>',
 					marginal = 'histogram',
 					facet_row = 'Accepted',
+					hover_data = ['n_trigger'],
 				)
 				cuts_to_draw_df = cuts_df.loc[cuts_df['variable']==column]
 				if len(cuts_to_draw_df) > 0:
