@@ -280,7 +280,7 @@ def script_core(measurement_name: str, force=False, n_bootstrap=0):
 			fig.scatter(
 				x = x_axis_values,
 				y = gaussian(x_axis_values, fitted_mu, fitted_sigma, fitted_amplitude),
-				label = 'Fitted Gaussian',
+				label = f'Fitted Gaussian (σ={fitted_sigma*1e12:.2f} ps)',
 			)
 			draw_median_and_MAD_vertical_lines(
 				plotlyfig = fig.plotly_figure,
