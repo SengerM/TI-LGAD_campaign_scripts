@@ -79,7 +79,7 @@ def binned_fit_langauss(samples, bins='auto'):
 		xdata = bin_centers,
 		ydata = hist,
 		p0 = [landau_x_mpv_guess, landau_xi_guess, gauss_sigma_guess],
-		# ~ bounds = ([1e-22]*3, [float('inf')]*3), # Don't know why setting the limits make this to fail even if the final value is well above the minimum limit.
+		# ~ bounds = ([0]*3, [float('inf')]*3), # Don't know why setting the limits make this to fail even if the final value is well above the minimum limit.
 	)
 	return popt, pcov, hist, bin_centers
 
@@ -122,37 +122,44 @@ def script_core(directory):
 				marginal = 'rug',
 				hover_data = ['n_trigger'],
 			)
-			if 'collected charge' in column.lower():
-				popt, _, hist, bin_centers = binned_fit_langauss(measured_data_df.query('Accepted==True')['Collected charge (V s)'])
+			if 'collected charge' in column.lower(): # LANGAUSS FIT! 
 				fig = go.Figure()
-				fig.add_trace(
-					go.Scatter(
-						x = bin_centers,
-						y = hist,
-						line_shape = 'hvh',
-						name = 'Data',
-					)
-				)
-				x_axis = np.linspace(min(bin_centers),max(bin_centers),999)
-				fig.add_trace(
-					go.Scatter(
-						x = x_axis,
-						y = langauss.pdf(x_axis, *popt),
-						name = f'Langauss fit<br>x<sub>MPV</sub>={popt[0]:.2e}<br>ξ={popt[1]:.2e}<br>σ={popt[2]:.2e}',
-					)
-				)
-				fig.add_trace(
-					go.Scatter(
-						x = x_axis,
-						y = landau.pdf(x_axis, popt[0], popt[1]),
-						name = f'Landau component',
-					)
-				)
 				fig.update_layout(
-					title = f'Langauss fit<br><sup>Measurement: {bureaucrat.measurement_name}</sup>',
+					title = f'Langauss fit on "accepted events"<br><sup>Measurement: {bureaucrat.measurement_name}</sup>',
 					xaxis_title = column,
 					yaxis_title = 'Probability density',
 				)
+				colors = iter(px.colors.qualitative.Plotly)
+				for n_channel in sorted(set(measured_data_df['n_channel'])):
+					popt, _, hist, bin_centers = binned_fit_langauss(measured_data_df.query('Accepted==True').query(f'n_channel=={n_channel}')['Collected charge (V s)'])
+					this_channel_color = next(colors)
+					fig.add_trace(
+						go.Scatter(
+							x = bin_centers,
+							y = hist,
+							line_shape = 'hvh',
+							name = f'Data CH{n_channel}',
+							line = dict(color = this_channel_color),
+							legendgroup = f'channel {n_channel}',
+						)
+					)
+					x_axis = np.linspace(min(bin_centers),max(bin_centers),999)
+					fig.add_trace(
+						go.Scatter(
+							x = x_axis,
+							y = langauss.pdf(x_axis, *popt),
+							name = f'Langauss fit CH{n_channel}<br>x<sub>MPV</sub>={popt[0]:.2e}<br>ξ={popt[1]:.2e}<br>σ={popt[2]:.2e}',
+							line = dict(color = this_channel_color, dash='dash'),
+							legendgroup = f'channel {n_channel}',
+						)
+					)
+					# ~ fig.add_trace(
+						# ~ go.Scatter(
+							# ~ x = x_axis,
+							# ~ y = landau.pdf(x_axis, popt[0], popt[1]),
+							# ~ name = f'Landau component CH{n_channel}',
+						# ~ )
+					# ~ )
 				fig.write_html(
 					str(plots_dir_path/Path(f'{column} langauss fit.html')),
 					include_plotlyjs = 'cdn',
