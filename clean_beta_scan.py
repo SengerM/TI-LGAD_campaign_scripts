@@ -7,6 +7,10 @@ import numpy as np
 from statsmodels.distributions.empirical_distribution import ECDF
 from scipy.interpolate import InterpolatedUnivariateSpline #from scipy.interpolate import interp1d
 from scipy.misc import derivative
+from landaupy import langauss
+from landaupy import landau
+from scipy.stats import median_abs_deviation
+from scipy.optimize import curve_fit
 
 def t_50_find_cuts(measured_data_df, n_channel):
 	ecdf = ECDF(measured_data_df.query(f'n_channel=={n_channel}')['t_50 (s)'])
@@ -58,6 +62,27 @@ def apply_cuts(data_df, cuts_df):
 			raise ValueError(f'Received a cut of type `cut type={cut_type}`, dont know that that is...')
 	return triggers_accepted_df
 
+def binned_fit_langauss(samples, bins='auto'):
+	hist, bin_edges = np.histogram(samples, bins, density=True)
+	bin_centers = bin_edges[:-1] + np.diff(bin_edges)/2
+	# Add an extra bin to the left:
+	hist = np.insert(hist, 0, sum(samples<bin_edges[0]))
+	bin_centers = np.insert(bin_centers, 0, bin_centers[0]-np.diff(bin_edges)[0])
+	# Add an extra bin to the right:
+	hist = np.append(hist,sum(samples>bin_edges[-1]))
+	bin_centers = np.append(bin_centers, bin_centers[-1]+np.diff(bin_edges)[0])
+	landau_x_mpv_guess = bin_centers[np.argmax(hist)]
+	landau_xi_guess = median_abs_deviation(samples)/5
+	gauss_sigma_guess = landau_xi_guess/10
+	popt, pcov = curve_fit(
+		lambda x, mpv, xi, sigma: langauss.pdf(x, mpv, np.abs(xi), np.abs(sigma)),
+		xdata = bin_centers,
+		ydata = hist,
+		p0 = [landau_x_mpv_guess, landau_xi_guess, gauss_sigma_guess],
+		# ~ bounds = ([1e-22]*3, [float('inf')]*3), # Don't know why setting the limits make this to fail even if the final value is well above the minimum limit.
+	)
+	return popt, pcov, hist, bin_centers
+
 def script_core(directory):
 	bureaucrat = Bureaucrat(
 		directory,
@@ -97,6 +122,41 @@ def script_core(directory):
 				marginal = 'rug',
 				hover_data = ['n_trigger'],
 			)
+			if 'collected charge' in column.lower():
+				popt, _, hist, bin_centers = binned_fit_langauss(measured_data_df.query('Accepted==True')['Collected charge (V s)'])
+				fig = go.Figure()
+				fig.add_trace(
+					go.Scatter(
+						x = bin_centers,
+						y = hist,
+						line_shape = 'hvh',
+						name = 'Data',
+					)
+				)
+				x_axis = np.linspace(min(bin_centers),max(bin_centers),999)
+				fig.add_trace(
+					go.Scatter(
+						x = x_axis,
+						y = langauss.pdf(x_axis, *popt),
+						name = f'Langauss fit<br>x<sub>MPV</sub>={popt[0]:.2e}<br>ξ={popt[1]:.2e}<br>σ={popt[2]:.2e}',
+					)
+				)
+				fig.add_trace(
+					go.Scatter(
+						x = x_axis,
+						y = landau.pdf(x_axis, popt[0], popt[1]),
+						name = f'Landau component',
+					)
+				)
+				fig.update_layout(
+					title = f'Langauss fit<br><sup>Measurement: {bureaucrat.measurement_name}</sup>',
+					xaxis_title = column,
+					yaxis_title = 'Probability density',
+				)
+				fig.write_html(
+					str(plots_dir_path/Path(f'{column} langauss fit.html')),
+					include_plotlyjs = 'cdn',
+				)
 			if column in set(cuts_df['variable']):
 				ecdf_fig = px.ecdf(
 					measured_data_df,
