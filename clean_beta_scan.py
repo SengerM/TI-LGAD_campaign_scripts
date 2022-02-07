@@ -84,7 +84,7 @@ def binned_fit_langauss(samples, bins='auto', nan='remove'):
 		xdata = bin_centers,
 		ydata = hist,
 		p0 = [landau_x_mpv_guess, landau_xi_guess, gauss_sigma_guess],
-		# ~ bounds = ([0]*3, [float('inf')]*3), # Don't know why setting the limits make this to fail even if the final value is well above the minimum limit.
+		# ~ bounds = ([0]*3, [float('inf')]*3), # Don't know why setting the limits make this to fail.
 	)
 	return popt, pcov, hist, bin_centers
 
@@ -97,21 +97,30 @@ def script_core(directory):
 	plots_dir_path = bureaucrat.processed_data_dir_path/Path('plots')
 	plots_dir_path.mkdir(exist_ok=True, parents=True)
 	
+	cuts_file_path = bureaucrat.measurement_base_path/Path('cuts.ods')
+	
 	try:
 		measured_data_df = pandas.read_feather(bureaucrat.processed_by_script_dir_path('acquire_and_parse_with_oscilloscope.py')/Path('measured_data.fd'))
 	except FileNotFoundError:
 		measured_data_df = pandas.read_csv(bureaucrat.processed_by_script_dir_path('acquire_and_parse_with_oscilloscope.py')/Path('measured_data.csv'))
 	
 	with bureaucrat.verify_no_errors_context():
-		cuts_df = pandas.read_excel(bureaucrat.measurement_base_path/Path('cuts.ods'))
-		cuts_df.to_csv(bureaucrat.processed_data_dir_path/Path(f'cuts.csv'))
-		
-		filtered_triggers_df = apply_cuts(measured_data_df, cuts_df)
+		try:
+			cuts_df = pandas.read_excel(cuts_file_path)
+			cuts_df.to_csv(bureaucrat.processed_data_dir_path/Path(f'cuts.csv'))
+			
+			filtered_triggers_df = apply_cuts(measured_data_df, cuts_df)
+			filtered_triggers_df.reset_index().to_feather(bureaucrat.processed_data_dir_path/Path('clean_triggers.fd'))
+		except FileNotFoundError:
+			print(f'Cannot find `{cuts_file_path}` specifying the cuts, will accept all triggers.')
+			cuts_df = pandas.DataFrame(columns=['variable']) # Create dummy df.
 		measured_data_df = measured_data_df.set_index('n_trigger')
-		measured_data_df['Accepted'] = filtered_triggers_df
+		try:
+			measured_data_df['Accepted'] = filtered_triggers_df
+		except NameError:
+			measured_data_df['Accepted'] = True # Accept all triggers.
 		measured_data_df = measured_data_df.reset_index()
 		
-		filtered_triggers_df.reset_index().to_feather(bureaucrat.processed_data_dir_path/Path('clean_triggers.fd'))
 		
 		for column in measured_data_df:
 			if column in {'n_trigger','When','n_channel','Accepted'}:
