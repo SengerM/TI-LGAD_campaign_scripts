@@ -80,7 +80,7 @@ def binned_fit_langauss(samples, bins='auto', nan='remove'):
 	landau_xi_guess = median_abs_deviation(samples)/5
 	gauss_sigma_guess = landau_xi_guess/10
 	popt, pcov = curve_fit(
-		lambda x, mpv, xi, sigma: langauss.pdf(x, mpv, np.abs(xi), np.abs(sigma)),
+		lambda x, mpv, xi, sigma: langauss.pdf(x, mpv, xi, sigma),
 		xdata = bin_centers,
 		ydata = hist,
 		p0 = [landau_x_mpv_guess, landau_xi_guess, gauss_sigma_guess],
