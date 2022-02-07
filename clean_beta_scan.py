@@ -12,6 +12,9 @@ from landaupy import landau
 from scipy.stats import median_abs_deviation
 from scipy.optimize import curve_fit
 
+def hex_to_rgba(h, alpha):
+    return tuple([int(h.lstrip('#')[i:i+2], 16) for i in (0, 2, 4)] + [alpha])
+
 def t_50_find_cuts(measured_data_df, n_channel):
 	ecdf = ECDF(measured_data_df.query(f'n_channel=={n_channel}')['t_50 (s)'])
 	t_50_points_for_sampling_ECDF = np.linspace(measured_data_df['t_50 (s)'].min(),measured_data_df['t_50 (s)'].max(),99)
@@ -62,7 +65,9 @@ def apply_cuts(data_df, cuts_df):
 			raise ValueError(f'Received a cut of type `cut type={cut_type}`, dont know that that is...')
 	return triggers_accepted_df
 
-def binned_fit_langauss(samples, bins='auto'):
+def binned_fit_langauss(samples, bins='auto', nan='remove'):
+	if nan == 'remove':
+		samples = samples[~np.isnan(samples)]
 	hist, bin_edges = np.histogram(samples, bins, density=True)
 	bin_centers = bin_edges[:-1] + np.diff(bin_edges)/2
 	# Add an extra bin to the left:
@@ -106,7 +111,7 @@ def script_core(directory):
 		measured_data_df['Accepted'] = filtered_triggers_df
 		measured_data_df = measured_data_df.reset_index()
 		
-		filtered_triggers_df.reset_index().to_feather(bureaucrat.processed_data_dir_path/Path('filtered_triggers.fd'))
+		filtered_triggers_df.reset_index().to_feather(bureaucrat.processed_data_dir_path/Path('clean_triggers.fd'))
 		
 		for column in measured_data_df:
 			if column in {'n_trigger','When','n_channel','Accepted'}:
@@ -153,13 +158,15 @@ def script_core(directory):
 							legendgroup = f'channel {n_channel}',
 						)
 					)
-					# ~ fig.add_trace(
-						# ~ go.Scatter(
-							# ~ x = x_axis,
-							# ~ y = landau.pdf(x_axis, popt[0], popt[1]),
-							# ~ name = f'Landau component CH{n_channel}',
-						# ~ )
-					# ~ )
+					fig.add_trace(
+						go.Scatter(
+							x = x_axis,
+							y = landau.pdf(x_axis, popt[0], popt[1]),
+							name = f'Landau component CH{n_channel}',
+							line = dict(color = f'rgba{hex_to_rgba(this_channel_color, .4)}', dash='dashdot'),
+							legendgroup = f'channel {n_channel}',
+						)
+					)
 				fig.write_html(
 					str(plots_dir_path/Path(f'{column} langauss fit.html')),
 					include_plotlyjs = 'cdn',
