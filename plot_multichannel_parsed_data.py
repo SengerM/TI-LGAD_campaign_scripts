@@ -7,6 +7,11 @@ import numpy as np
 from statsmodels.distributions.empirical_distribution import ECDF
 from scipy.interpolate import InterpolatedUnivariateSpline
 from scipy.misc import derivative
+from clean_beta_scan import binned_fit_langauss
+from landaupy import langauss, landau
+
+def hex_to_rgba(h, alpha):
+    return tuple([int(h.lstrip('#')[i:i+2], 16) for i in (0, 2, 4)] + [alpha])
 
 def script_core(directory):
 	bureaucrat = Bureaucrat(
@@ -75,7 +80,56 @@ def script_core(directory):
 			# ~ ),
 		)
 	fig.write_html(
-			str(bureaucrat.processed_data_dir_path/Path('scatter matrix')) + '.html',
+		str(bureaucrat.processed_data_dir_path/Path('scatter matrix')) + '.html',
+		include_plotlyjs = 'cdn',
+	)
+	
+	# Fit a Landau to the collected charge ---
+	df['n_channel'] = df['n_channel'].astype(int) # Go back to integer numbers...
+	for column in measured_data_df.columns:
+		if 'collected charge' not in column.lower():
+			continue
+		fig = go.Figure()
+		fig.update_layout(
+			title = f'Langauss fit<br><sup>Measurement: {bureaucrat.measurement_name}</sup>',
+			xaxis_title = column,
+			yaxis_title = 'Probability density',
+		)
+		colors = iter(px.colors.qualitative.Plotly)
+		for n_channel in sorted(set(measured_data_df['n_channel'])):
+			popt, _, hist, bin_centers = binned_fit_langauss(measured_data_df.query(f'n_channel=={n_channel}')[column].dropna())
+			this_channel_color = next(colors)
+			fig.add_trace(
+				go.Scatter(
+					x = bin_centers,
+					y = hist,
+					line_shape = 'hvh',
+					name = f'Data CH{n_channel}',
+					line = dict(color = this_channel_color),
+					legendgroup = f'channel {n_channel}',
+				)
+			)
+			x_axis = np.linspace(min(bin_centers),max(bin_centers),999)
+			fig.add_trace(
+				go.Scatter(
+					x = x_axis,
+					y = langauss.pdf(x_axis, *popt),
+					name = f'Langauss fit CH{n_channel}<br>x<sub>MPV</sub>={popt[0]:.2e}<br>ξ={popt[1]:.2e}<br>σ={popt[2]:.2e}',
+					line = dict(color = this_channel_color, dash='dash'),
+					legendgroup = f'channel {n_channel}',
+				)
+			)
+			fig.add_trace(
+				go.Scatter(
+					x = x_axis,
+					y = landau.pdf(x_axis, popt[0], popt[1]),
+					name = f'Landau component CH{n_channel}',
+					line = dict(color = f'rgba{hex_to_rgba(this_channel_color, .4)}', dash='dashdot'),
+					legendgroup = f'channel {n_channel}',
+				)
+			)
+		fig.write_html(
+			str(bureaucrat.processed_data_dir_path/Path(f'{column} langauss fit.html')),
 			include_plotlyjs = 'cdn',
 		)
 
