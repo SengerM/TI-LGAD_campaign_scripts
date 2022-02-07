@@ -136,12 +136,24 @@ def script_core(directory):
 				)
 				colors = iter(px.colors.qualitative.Plotly)
 				for n_channel in sorted(set(measured_data_df['n_channel'])):
-					popt, _, hist, bin_centers = binned_fit_langauss(measured_data_df.query('Accepted==True').query(f'n_channel=={n_channel}')['Collected charge (V s)'])
+					_samples = measured_data_df.query('Accepted==True').query(f'n_channel=={n_channel}')['Collected charge (V s)']
+					popt, _, hist, bin_centers = binned_fit_langauss(_samples)
 					this_channel_color = next(colors)
+					
+					n = len(_samples)
+					p = hist/n*np.diff(bin_centers)[0]*len(_samples)
+					hist_error = (n*p*(1-p))**.5
+					hist_error /= np.diff(bin_centers)[0]*len(_samples) # To convert to probability density.
 					fig.add_trace(
 						go.Scatter(
 							x = bin_centers,
 							y = hist,
+							error_y = dict(
+								type = 'data',
+								array = hist_error,
+								visible = True,
+								width = 0,
+							),
 							line_shape = 'hvh',
 							name = f'Data CH{n_channel}',
 							line = dict(color = this_channel_color),
@@ -163,7 +175,7 @@ def script_core(directory):
 							x = x_axis,
 							y = landau.pdf(x_axis, popt[0], popt[1]),
 							name = f'Landau component CH{n_channel}',
-							line = dict(color = f'rgba{hex_to_rgba(this_channel_color, .4)}', dash='dashdot'),
+							line = dict(color = f'rgba{hex_to_rgba(this_channel_color, .3)}', dash='dashdot'),
 							legendgroup = f'channel {n_channel}',
 						)
 					)
