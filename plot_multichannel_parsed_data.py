@@ -8,7 +8,8 @@ from statsmodels.distributions.empirical_distribution import ECDF
 from scipy.interpolate import InterpolatedUnivariateSpline
 from scipy.misc import derivative
 from clean_beta_scan import binned_fit_langauss
-from landaupy import langauss, landau
+from landaupy import langauss, landau # https://github.com/SengerM/landaupy
+from grafica.plotly_utils.utils import scatter_histogram # https://github.com/SengerM/grafica
 
 def hex_to_rgba(h, alpha):
     return tuple([int(h.lstrip('#')[i:i+2], 16) for i in (0, 2, 4)] + [alpha])
@@ -47,7 +48,7 @@ def script_core(directory):
 			x = column,
 			color = 'n_channel',
 			title = f'{column}<br><sup>Measurement: {bureaucrat.measurement_name}</sup>',
-			marginal = 'histogram',
+			marginal = 'rug',
 		)
 		fig.write_html(
 			str(bureaucrat.processed_data_dir_path/Path(f'{column} ECDF.html')),
@@ -97,16 +98,17 @@ def script_core(directory):
 		)
 		colors = iter(px.colors.qualitative.Plotly)
 		for n_channel in sorted(set(measured_data_df['n_channel'])):
-			popt, _, hist, bin_centers = binned_fit_langauss(measured_data_df.query(f'n_channel=={n_channel}')[column].dropna())
+			samples_for_langauss_fit = measured_data_df.query(f'n_channel=={n_channel}')[column].dropna()
+			popt, _, hist, bin_centers = binned_fit_langauss(samples_for_langauss_fit)
 			this_channel_color = next(colors)
 			fig.add_trace(
-				go.Scatter(
-					x = bin_centers,
-					y = hist,
-					line_shape = 'hvh',
+				scatter_histogram(
+					samples = samples_for_langauss_fit,
+					bins = list(bin_centers - np.diff(bin_centers)[0]) + [bin_centers[-1]+np.diff(bin_centers)[-1]],
 					name = f'Data CH{n_channel}',
-					line = dict(color = this_channel_color),
+					error_y = dict(type='auto', width = 0),
 					legendgroup = f'channel {n_channel}',
+					density = True,
 				)
 			)
 			x_axis = np.linspace(min(bin_centers),max(bin_centers),999)
