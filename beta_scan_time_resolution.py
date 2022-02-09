@@ -201,7 +201,7 @@ def script_core(measurement_name: str, force=False, n_bootstrap=0):
 		variables = locals(),
 	)
 	
-	if force == False and bureaucrat.job_successfully_completed_flag:
+	if force == False and bureaucrat.job_successfully_completed_by_script('this script'):
 		return
 	
 	with bureaucrat.verify_no_errors_context():
@@ -210,11 +210,22 @@ def script_core(measurement_name: str, force=False, n_bootstrap=0):
 		except FileNotFoundError:
 			measured_data_df = pandas.read_csv(bureaucrat.processed_by_script_dir_path('acquire_and_parse_with_oscilloscope.py')/Path('measured_data.csv'))
 		
+		beta_scan_was_cleaned = bureaucrat.job_successfully_completed_by_script('clean_beta_scan.py')
+		if beta_scan_was_cleaned:
+			df = pandas.read_feather(bureaucrat.processed_by_script_dir_path('clean_beta_scan.py')/Path('clean_triggers.fd'))
+			df = df.set_index('n_trigger')
+			measured_data_df = measured_data_df.set_index('n_trigger')
+			measured_data_df['accepted'] = df['accepted']
+			measured_data_df = measured_data_df.reset_index()
+		else: # We accept all triggers...
+			measured_data_df['accepted'] = True
+		measured_data_df = measured_data_df.query('accepted==True') # From now on we drop all useless data.
+		
 		if len(set(measured_data_df['n_channel'])) != 2:
 			raise RuntimeError(f'Expecting data from only two channels for a beta scan (DUT and reference) but this scan seems to have data from the following channels: {set(measured_data_df["Channel number"])}.')
 		channels = list(set(measured_data_df['n_channel']))
 		
-		for idx,n_channel in enumerate(channels):
+		for idx,n_channel in enumerate(channels): # This is so I can use the same framework as in the TCT where there is only one detector but two pulses.
 			measured_data_df.loc[measured_data_df['n_channel']==n_channel,'n_pulse'] = idx+1
 		
 		final_results_df = pandas.DataFrame()
