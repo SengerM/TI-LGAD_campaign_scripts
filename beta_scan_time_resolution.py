@@ -283,11 +283,15 @@ def script_core(measurement_name: str, force=False, n_bootstrap=0):
 				ylabel = 'Number of events',
 				xlabel = 'Δt (s)',
 			)
-			samples_for_plot = list(Delta_t_df.loc[(Delta_t_df['k_1 (%)']==best_k1k2[0])&(Delta_t_df['k_2 (%)']==best_k1k2[1]),'Δt (s)'])
-			fig.histogram(
-				samples = samples_for_plot,
+			samples_for_plot = np.array(list(Delta_t_df.loc[(Delta_t_df['k_1 (%)']==best_k1k2[0])&(Delta_t_df['k_2 (%)']==best_k1k2[1]),'Δt (s)']))
+			fig.plotly_figure.add_trace(
+				grafica.plotly_utils.utils.scatter_histogram(
+					samples = samples_for_plot,
+					name = f'Measured data',
+					error_y = dict(type='auto'),
+				)
 			)
-			x_axis_values = sorted(list(np.linspace(min(samples_for_plot),max(samples_for_plot),99)) + list(pandas.Series(samples_for_plot).sample(n=99)))
+			x_axis_values = sorted(list(np.linspace(min(samples_for_plot),max(samples_for_plot),99)) + list(np.linspace(fitted_mu-5*fitted_sigma,fitted_mu+5*fitted_sigma,99)))
 			fig.scatter(
 				x = x_axis_values,
 				y = gaussian(x_axis_values, fitted_mu, fitted_sigma, fitted_amplitude),
