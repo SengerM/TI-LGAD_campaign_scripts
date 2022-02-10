@@ -192,7 +192,7 @@ def script_core(directory):
 					str(plots_dir_path/Path(f'{column} langauss fit.html')),
 					include_plotlyjs = 'cdn',
 				)
-			if column in set(cuts_df['variable']):
+			if column in set(cuts_df['variable']) or column in {'Collected charge (V s)'}:
 				ecdf_fig = px.ecdf(
 					measured_data_df,
 					x = column,
@@ -226,7 +226,7 @@ def script_core(directory):
 				include_plotlyjs = 'cdn',
 			)
 		
-		columns_for_scatter_matrix_plot = set(measured_data_df.columns) - {'n_trigger','When','n_channel','Accepted','Noise (V)','Time over 20% (s)'} - {f't_{i*10} (s)' for i in [1,2,3,4,6,7,8,9]}
+		columns_for_scatter_matrix_plot = set(measured_data_df.columns) - {'n_trigger','When','n_channel','Accepted','Time over 20% (s)'} - {f't_{i*10} (s)' for i in [1,2,3,4,6,7,8,9]}
 		df = measured_data_df
 		df['n_channel'] = df['n_channel'].astype(str) # This is so the color scale is discrete.
 		fig = px.scatter_matrix(
@@ -255,9 +255,9 @@ def script_core(directory):
 				# ~ ),
 			)
 		fig.write_html(
-				str(plots_dir_path/Path('scatter matrix')) + '.html',
-				include_plotlyjs = 'cdn',
-			)
+			str(plots_dir_path/Path('scatter matrix')) + '.html',
+			include_plotlyjs = 'cdn',
+		)
 	
 ########################################################################
 
