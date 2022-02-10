@@ -25,6 +25,9 @@ def script_core(directory):
 	except FileNotFoundError:
 		measured_data_df = pandas.read_csv(bureaucrat.processed_by_script_dir_path('acquire_and_parse_with_oscilloscope.py')/Path('measured_data.csv'))
 	
+	for col in {'n_channel','n_trigger'}:
+		measured_data_df[col] = measured_data_df[col].astype(int)
+	
 	interesting_columns = set()
 	for column in measured_data_df:
 		if column in {'n_trigger','When','n_channel'}: 
@@ -109,6 +112,7 @@ def script_core(directory):
 					error_y = dict(type='auto', width = 0),
 					legendgroup = f'channel {n_channel}',
 					density = True,
+					line = dict(color = this_channel_color),
 				)
 			)
 			x_axis = np.linspace(min(bin_centers),max(bin_centers),999)
