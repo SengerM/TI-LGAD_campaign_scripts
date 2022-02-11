@@ -16,7 +16,7 @@ def script_core(measurement_name: str, force=False):
 		variables = locals(),
 	)
 	
-	if force == False and bureaucrat.job_successfully_completed_flag:
+	if force == False and bureaucrat.job_successfully_completed_by_script('this script'):
 		return
 	
 	results_file_path = bureaucrat.processed_data_dir_path/Path('bias_voltage_summary.txt')

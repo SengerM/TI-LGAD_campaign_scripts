@@ -18,7 +18,7 @@ def script_core(measurement_name: str, force=False):
 	
 	results_file_path = bureaucrat.processed_data_dir_path/Path('temperature_summary.txt')
 	
-	if force == False and bureaucrat.job_successfully_completed_flag:
+	if force == False and bureaucrat.job_successfully_completed_by_script('this script'):
 		return
 	
 	with bureaucrat.verify_no_errors_context():

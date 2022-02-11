@@ -17,7 +17,7 @@ def script_core(measurement_name: str, force=False):
 		variables = locals(),
 	)
 	
-	if force == False and bureaucrat.job_successfully_completed_flag:
+	if force == False and bureaucrat.job_successfully_completed_by_script('this script'):
 		return
 	
 	with bureaucrat.verify_no_errors_context():
