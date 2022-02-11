@@ -7,6 +7,8 @@ import plotly.graph_objects as go
 import measurements_table as mt
 from scipy.stats import median_abs_deviation
 
+pandas.options.mode.chained_assignment = None
+
 def script_core(measurement_name: str, force=False):
 	if not mt.retrieve_measurement_type(measurement_name) == 'scan 1D':
 		raise ValueError(f'Measurement must be a `scan 1D` but measurement named {repr(measurement_name)} is a {repr(mt.retrieve_measurement_type(measurement_name))}.')
