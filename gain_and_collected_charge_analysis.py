@@ -7,6 +7,7 @@ import measurements_table as mt
 from calculate_interpixel_distance import script_core as calculate_interpixel_distance
 import datetime
 from inter_pixel_distance_analysis import SORT_VALUES_BY, PLOT_GRAPH_DIMENSIONS, annealing_time_to_label_for_the_plot
+from scipy.interpolate import interp1d
 
 measurements_table_df = mt.create_measurements_table()
 
@@ -44,6 +45,8 @@ for measurement_name in measurements_table_df.query('Type=="scan 1D"').index:
 			'Voltage scan measurement name': this_measurement_belongs_to_the_voltage_scan,
 			'Collected charge (C) mean': _df['Collected charge (C) median'].mean(),
 			'Collected charge (C) std': _df['Collected charge (C) MAD_std'].mean(),
+			'Collected charge (V s) mean': _df['Collected charge (V s) median'].mean(),
+			'Collected charge (V s) std': _df['Collected charge (V s) MAD_std'].mean(),
 			'Fluence (neq/cm^2)/1e14': mt.get_measurement_fluence(measurement_name)/1e14,
 			'Annealing time': mt.get_measurement_annealing_time(measurement_name),
 		},
@@ -60,6 +63,19 @@ collected_charge_df.set_index('Measured device', inplace=True)
 collected_charge_df = collected_charge_df.join(utils.bureaucrat.devices_sheet_df)
 collected_charge_df.set_index('Measurement name', inplace=True)
 collected_charge_df.reset_index(inplace=True)
+
+# Now calculate the gain using as a reference the PIN diode scan ---
+
+PIN_DIODE_MEASUREMENT_NAME = '20220129160141_#93_sweeping_bias_voltage'
+
+pin_diode_df = collected_charge_df.query(f'`Voltage scan measurement name`=="{PIN_DIODE_MEASUREMENT_NAME}"')
+pin_diode_average_collected_charge_Vs_interpolation = interp1d(
+	x = pin_diode_df['Bias voltage (V)'],
+	y = pin_diode_df['Collected charge (V s) mean'],
+	bounds_error = False,
+)
+
+collected_charge_df['Gain'] = collected_charge_df['Collected charge (V s) mean']/pin_diode_average_collected_charge_Vs_interpolation(collected_charge_df['Bias voltage (V)'])
 
 collected_charge_df = collected_charge_df.sort_values(
 	by = SORT_VALUES_BY,
@@ -97,3 +113,37 @@ fig.add_annotation(
 	)
 )
 fig.write_html(str(utils.path_to_dashboard_media_directory/Path('collected_charge_vs_bias_voltage.html')), include_plotlyjs = 'cdn')
+
+
+
+fig = utils.line(
+	data_frame = df,
+	x = 'Bias voltage (V)',
+	y = 'Gain',
+	# ~ error_y = 'Collected charge (C) std',
+	# ~ error_y_mode = 'band',
+	title = f'Gain vs bias voltage<br><sup>Plot updated: {datetime.datetime.now()}</sup>',
+	log_y = True,
+	line_group = 'Voltage scan measurement name',
+	**PLOT_GRAPH_DIMENSIONS,
+)
+fig.add_hline(
+	y = 1,
+	line_dash = 'dash',
+	
+)
+fig.add_annotation(
+	dict(
+		name="draft watermark",
+		text="PRELIMINARY",
+		textangle=-30,
+		opacity=0.1,
+		font=dict(color="black", size=100),
+		xref="paper",
+		yref="paper",
+		x=0.5,
+		y=0.5,
+		showarrow=False,
+	)
+)
+fig.write_html(str(utils.path_to_dashboard_media_directory/Path('gain_vs_bias_voltage.html')), include_plotlyjs = 'cdn')
