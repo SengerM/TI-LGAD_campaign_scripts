@@ -11,6 +11,7 @@ from landaupy import langauss
 from landaupy import landau
 from scipy.stats import median_abs_deviation
 from scipy.optimize import curve_fit
+from grafica.plotly_utils.utils import scatter_histogram
 
 def hex_to_rgba(h, alpha):
     return tuple([int(h.lstrip('#')[i:i+2], 16) for i in (0, 2, 4)] + [alpha])
@@ -149,21 +150,11 @@ def script_core(directory):
 					popt, _, hist, bin_centers = binned_fit_langauss(_samples)
 					this_channel_color = next(colors)
 					
-					n = len(_samples)
-					p = hist/n*np.diff(bin_centers)[0]*len(_samples)
-					hist_error = (n*p*(1-p))**.5
-					hist_error /= np.diff(bin_centers)[0]*len(_samples) # To convert to probability density.
 					fig.add_trace(
-						go.Scatter(
-							x = bin_centers,
-							y = hist,
-							error_y = dict(
-								type = 'data',
-								array = hist_error,
-								visible = True,
-								width = 0,
-							),
-							line_shape = 'hvh',
+						scatter_histogram(
+							samples = _samples,
+							error_y = dict(type='auto'),
+							density = True,
 							name = f'Data CH{n_channel}',
 							line = dict(color = this_channel_color),
 							legendgroup = f'channel {n_channel}',
