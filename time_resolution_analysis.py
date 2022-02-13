@@ -82,7 +82,11 @@ fig = utils.line(
 )
 fig.update_yaxes(range=[1e-12,66e-12])
 fig.write_html(str(utils.path_to_scripts_output_directory/Path('time_resolution_vs_bias_voltage.html')), include_plotlyjs = 'cdn')
-
+fig.add_hline(
+	y = 30e-12,
+	line_dash = "dash",
+	annotation_text = '30 ps',
+)
 fig.add_annotation(
 	dict(
 		name="draft watermark",
