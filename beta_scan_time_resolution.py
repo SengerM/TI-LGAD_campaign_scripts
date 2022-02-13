@@ -221,9 +221,14 @@ def script_core(measurement_name: str, force=False, n_bootstrap=0):
 			measured_data_df['accepted'] = True
 		measured_data_df = measured_data_df.query('accepted==True') # From now on we drop all useless data.
 		
-		if len(set(measured_data_df['n_channel'])) != 2:
-			raise RuntimeError(f'Expecting data from only two channels for a beta scan (DUT and reference) but this scan seems to have data from the following channels: {set(measured_data_df["Channel number"])}.')
-		channels = list(set(measured_data_df['n_channel']))
+		if len(set(measured_data_df['n_channel'])) == 2:
+			channels = list(set(measured_data_df['n_channel']))
+		else:
+			print(f'This measurement contains more than two channels, namely: {set(measured_data_df["n_channel"])}. Which ones do you want to use to calculate the time resolution?')
+			ch_A = int(input(f'Enter number of first channel: '))
+			ch_B = int(input(f'Enter number of first channel: '))
+			channels = set([ch_A, ch_B])
+			measured_data_df = measured_data_df.loc[measured_data_df['n_channel'].isin(channels)] # Discard all other channels.
 		
 		for idx,n_channel in enumerate(channels): # This is so I can use the same framework as in the TCT where there is only one detector but two pulses.
 			measured_data_df.loc[measured_data_df['n_channel']==n_channel,'n_pulse'] = idx+1
