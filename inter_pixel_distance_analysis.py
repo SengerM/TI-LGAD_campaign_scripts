@@ -31,7 +31,7 @@ PLOT_GRAPH_DIMENSIONS = dict(
 	labels = {
 		'Collected charge (C) mean': 'Collected charge (C)',
 		'Fluence (neq/cm^2)/1e14': 'fluence (n<sub>eq</sub>/cm<sup>2</sup>×10<sup>-14</sup>)',
-		'IPD with (m) calibrated': 'IPD (m)',
+		'IPD (m) calibrated': 'IPD (m)',
 		'Annealing time label': 'Annealing time (days)',
 	},
 	text = 'Annealing time label',
