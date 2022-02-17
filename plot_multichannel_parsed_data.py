@@ -109,7 +109,7 @@ def script_core(directory):
 					samples = samples_for_langauss_fit,
 					bins = list(bin_centers - np.diff(bin_centers)[0]) + [bin_centers[-1]+np.diff(bin_centers)[-1]],
 					name = f'Data CH{n_channel}',
-					error_y = dict(type='auto', width = 0),
+					error_y = dict(type='auto'),
 					legendgroup = f'channel {n_channel}',
 					density = True,
 					line = dict(color = this_channel_color),
