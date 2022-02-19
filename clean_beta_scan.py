@@ -16,29 +16,14 @@ from grafica.plotly_utils.utils import scatter_histogram
 def hex_to_rgba(h, alpha):
     return tuple([int(h.lstrip('#')[i:i+2], 16) for i in (0, 2, 4)] + [alpha])
 
-def t_50_find_cuts(measured_data_df, n_channel):
-	ecdf = ECDF(measured_data_df.query(f'n_channel=={n_channel}')['t_50 (s)'])
-	t_50_points_for_sampling_ECDF = np.linspace(measured_data_df['t_50 (s)'].min(),measured_data_df['t_50 (s)'].max(),99)
-	t_50_points_for_sampling_ECDF = t_50_points_for_sampling_ECDF[~np.isnan(t_50_points_for_sampling_ECDF)]
-	t_50_points_for_sampling_ECDF = np.array(sorted(set(t_50_points_for_sampling_ECDF)))
-	interpolated_ecdf = InterpolatedUnivariateSpline(t_50_points_for_sampling_ECDF, ecdf(t_50_points_for_sampling_ECDF), k=3) # This is a smooth version of the ECDF, that can be differentiated.
-	t_50_axis = np.linspace(min(t_50_points_for_sampling_ECDF), max(t_50_points_for_sampling_ECDF), 999)
-	dECDFdt_50 = interpolated_ecdf.derivative()(t_50_axis)
-	d2ECDFdt_50_2 = interpolated_ecdf.derivative().derivative()(t_50_axis)
-	t_50_center = t_50_axis[np.argmax(dECDFdt_50)]
-	t_50_peak_width = t_50_axis[np.argmin(d2ECDFdt_50_2)] - t_50_axis[np.argmax(d2ECDFdt_50_2)]
-	t_50_low_cut = t_50_center - t_50_peak_width*2
-	t_50_high_cut = t_50_center + t_50_peak_width*2
-	return t_50_low_cut, t_50_high_cut
-
 def apply_cuts(data_df, cuts_df):
 	"""
 	Given a dataframe `cuts_df` with one cut per row, e.g.
 	```
-				  variable  n_channel cut type     cut value
-				  t_50 (s)          1    lower  1.341500e-07
-				  t_50 (s)          1   higher  1.348313e-07
-	Collected charge (V s)          4    lower  2.204645e-11
+				  variable  device_name cut type     cut value
+				  t_50 (s)            1    lower  1.341500e-07
+				  t_50 (s)            1   higher  1.348313e-07
+	Collected charge (V s)            4    lower  2.204645e-11
 
 	```
 	this function returns a series with the index `n_trigger` and the value
@@ -48,20 +33,20 @@ def apply_cuts(data_df, cuts_df):
 	of the variables in any of the channels is outside the range, it will
 	be `False`.
 	"""
-	for n_channel in set(cuts_df['n_channel']):
-		if n_channel not in set(data_df['n_channel']):
-			raise ValueError(f'There is a cut in `n_channel={n_channel}` but the measured data does not contain this channel, measured channels are {set(data_df["n_channel"])}.')
+	for device_name in set(cuts_df['device_name']):
+		if device_name not in set(data_df['device_name']):
+			raise ValueError(f'There is a cut in `device_name={repr(device_name)}` but the measured data does not contain this device, measured devices are {set(data_df["device_name"])}.')
 	data_df = data_df.pivot(
 		index = 'n_trigger',
-		columns = 'n_channel',
-		values = set(data_df.columns) - {'n_channel','n_channel'},
+		columns = 'device_name',
+		values = set(data_df.columns) - {'device_name'},
 	)
 	triggers_accepted_df = pandas.DataFrame({'accepted': True}, index=data_df.index)
 	for idx, cut_row in cuts_df.iterrows():
 		if cut_row['cut type'] == 'lower':
-			triggers_accepted_df['accepted'] &= data_df[(cut_row['variable'],cut_row['n_channel'])] >= cut_row['cut value']
+			triggers_accepted_df['accepted'] &= data_df[(cut_row['variable'],cut_row['device_name'])] >= cut_row['cut value']
 		elif cut_row['cut type'] == 'higher':
-			triggers_accepted_df['accepted'] &= data_df[(cut_row['variable'],cut_row['n_channel'])] <= cut_row['cut value']
+			triggers_accepted_df['accepted'] &= data_df[(cut_row['variable'],cut_row['device_name'])] <= cut_row['cut value']
 		else:
 			raise ValueError(f'Received a cut of type `cut type={cut_type}`, dont know that that is...')
 	return triggers_accepted_df
@@ -101,9 +86,9 @@ def script_core(directory):
 	cuts_file_path = bureaucrat.measurement_base_path/Path('cuts.ods')
 	
 	try:
-		measured_data_df = pandas.read_feather(bureaucrat.processed_by_script_dir_path('acquire_and_parse_with_oscilloscope.py')/Path('measured_data.fd'))
+		measured_data_df = pandas.read_feather(bureaucrat.processed_by_script_dir_path('beta_scan.py')/Path('measured_data.fd'))
 	except FileNotFoundError:
-		measured_data_df = pandas.read_csv(bureaucrat.processed_by_script_dir_path('acquire_and_parse_with_oscilloscope.py')/Path('measured_data.csv'))
+		measured_data_df = pandas.read_csv(bureaucrat.processed_by_script_dir_path('beta_scan.py')/Path('measured_data.csv'))
 	
 	with bureaucrat.verify_no_errors_context():
 		try:
@@ -124,12 +109,12 @@ def script_core(directory):
 		
 		
 		for column in measured_data_df:
-			if column in {'n_trigger','When','n_channel','Accepted'}:
+			if column in {'n_trigger','When','device_name','Accepted'}:
 				continue
 			histogram_fig = px.histogram(
 				measured_data_df,
 				x = column,
-				facet_col = 'n_channel',
+				facet_col = 'device_name',
 				title = f'{column}<br><sup>Measurement: {bureaucrat.measurement_name}</sup>',
 				color = 'Accepted',
 				color_discrete_map = {False: 'red', True: 'green'},
@@ -145,8 +130,8 @@ def script_core(directory):
 					yaxis_title = 'Probability density',
 				)
 				colors = iter(px.colors.qualitative.Plotly)
-				for n_channel in sorted(set(measured_data_df['n_channel'])):
-					_samples = measured_data_df.query('Accepted==True').query(f'n_channel=={n_channel}')['Collected charge (V s)']
+				for device_name in sorted(set(measured_data_df['device_name'])):
+					_samples = measured_data_df.query('Accepted==True').query(f'device_name=={repr(device_name)}')['Collected charge (V s)']
 					popt, _, hist, bin_centers = binned_fit_langauss(_samples)
 					this_channel_color = next(colors)
 					
@@ -155,9 +140,9 @@ def script_core(directory):
 							samples = _samples,
 							error_y = dict(type='auto'),
 							density = True,
-							name = f'Data CH{n_channel}',
+							name = f'Data {device_name}',
 							line = dict(color = this_channel_color),
-							legendgroup = f'channel {n_channel}',
+							legendgroup = device_name,
 						)
 					)
 					x_axis = np.linspace(min(bin_centers),max(bin_centers),999)
@@ -165,18 +150,18 @@ def script_core(directory):
 						go.Scatter(
 							x = x_axis,
 							y = langauss.pdf(x_axis, *popt),
-							name = f'Langauss fit CH{n_channel}<br>x<sub>MPV</sub>={popt[0]:.2e}<br>ξ={popt[1]:.2e}<br>σ={popt[2]:.2e}',
+							name = f'Langauss fit {device_name}<br>x<sub>MPV</sub>={popt[0]:.2e}<br>ξ={popt[1]:.2e}<br>σ={popt[2]:.2e}',
 							line = dict(color = this_channel_color, dash='dash'),
-							legendgroup = f'channel {n_channel}',
+							legendgroup = device_name,
 						)
 					)
 					fig.add_trace(
 						go.Scatter(
 							x = x_axis,
 							y = landau.pdf(x_axis, popt[0], popt[1]),
-							name = f'Landau component CH{n_channel}',
+							name = f'Landau component {device_name}',
 							line = dict(color = f'rgba{hex_to_rgba(this_channel_color, .3)}', dash='dashdot'),
-							legendgroup = f'channel {n_channel}',
+							legendgroup = device_name,
 						)
 					)
 				fig.write_html(
@@ -187,7 +172,7 @@ def script_core(directory):
 				ecdf_fig = px.ecdf(
 					measured_data_df,
 					x = column,
-					color = 'n_channel',
+					color = 'device_name',
 					title = f'{column}<br><sup>Measurement: {bureaucrat.measurement_name}</sup>',
 					marginal = 'histogram',
 					facet_row = 'Accepted',
@@ -195,13 +180,13 @@ def script_core(directory):
 				)
 				cuts_to_draw_df = cuts_df.loc[cuts_df['variable']==column]
 				if len(cuts_to_draw_df) > 0:
-					for n_channel in sorted(set(cuts_to_draw_df['n_channel'])):
-						for cut_type in sorted(set(cuts_to_draw_df.loc[cuts_to_draw_df['n_channel']==n_channel,'cut type'])):
+					for device_name in sorted(set(cuts_to_draw_df['device_name'])):
+						for cut_type in sorted(set(cuts_to_draw_df.loc[cuts_to_draw_df['device_name']==device_name,'cut type'])):
 							for fig in [histogram_fig, ecdf_fig]:
 								fig.add_vline(
-									x = float(cuts_df.loc[(cuts_df['n_channel']==n_channel)&(cuts_df['cut type']==cut_type)&(cuts_df['variable']==column), 'cut value']),
+									x = float(cuts_df.loc[(cuts_df['device_name']==device_name)&(cuts_df['cut type']==cut_type)&(cuts_df['variable']==column), 'cut value']),
 									opacity = .5,
-									annotation_text = f'CH{n_channel} {cut_type} cut️',
+									annotation_text = f'{device_name} {cut_type} cut️',
 									line_color = 'black',
 									line_dash = 'dash',
 									annotation_textangle = -90,
@@ -217,14 +202,13 @@ def script_core(directory):
 				include_plotlyjs = 'cdn',
 			)
 		
-		columns_for_scatter_matrix_plot = set(measured_data_df.columns) - {'n_trigger','When','n_channel','Accepted','Time over 20% (s)'} - {f't_{i*10} (s)' for i in [1,2,3,4,6,7,8,9]}
+		columns_for_scatter_matrix_plot = set(measured_data_df.columns) - {'n_trigger','When','device_name','Accepted','Time over 20% (s)'} - {f't_{i*10} (s)' for i in [1,2,3,4,6,7,8,9]} - {'Humidity (%RH)','Temperature (°C)','Bias voltage (V)','Bias current (A)'}
 		df = measured_data_df
-		df['n_channel'] = df['n_channel'].astype(str) # This is so the color scale is discrete.
 		fig = px.scatter_matrix(
 			df,
 			dimensions = sorted(columns_for_scatter_matrix_plot),
 			title = f'Scatter matrix plot<br><sup>Measurement: {bureaucrat.measurement_name}</sup>',
-			symbol = 'n_channel',
+			symbol = 'device_name',
 			color = 'Accepted',
 			color_discrete_map = {False: 'red', True: 'green'},
 			symbol_map = {True: 'circle', False: 'x'},
