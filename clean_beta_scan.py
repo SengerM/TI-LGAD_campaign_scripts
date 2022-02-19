@@ -251,6 +251,7 @@ def script_core(directory, plot_waveforms=False):
 	if plot_waveforms == True:
 		fig = px.line(
 			waveforms_df,
+			title = f'Waveforms<br><sup>Measurement: {bureaucrat.measurement_name}</sup>',
 			x = 'Time (s)',
 			y = 'Amplitude (V)',
 			facet_row = 'device_name',
