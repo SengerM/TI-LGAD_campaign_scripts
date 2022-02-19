@@ -12,6 +12,7 @@ from landaupy import landau
 from scipy.stats import median_abs_deviation
 from scipy.optimize import curve_fit
 from grafica.plotly_utils.utils import scatter_histogram
+from plotly.subplots import make_subplots
 
 def hex_to_rgba(h, alpha):
     return tuple([int(h.lstrip('#')[i:i+2], 16) for i in (0, 2, 4)] + [alpha])
@@ -74,7 +75,7 @@ def binned_fit_langauss(samples, bins='auto', nan='remove'):
 	)
 	return popt, pcov, hist, bin_centers
 
-def script_core(directory):
+def script_core(directory, plot_waveforms=False):
 	bureaucrat = Bureaucrat(
 		directory,
 		variables = locals(),
@@ -165,7 +166,7 @@ def script_core(directory):
 						)
 					)
 				fig.write_html(
-					str(plots_dir_path/Path(f'{column} langauss fit.html')),
+					str(bureaucrat.processed_data_dir_path/Path(f'{column} langauss fit.html')),
 					include_plotlyjs = 'cdn',
 				)
 			if column in set(cuts_df['variable']) or column in {'Collected charge (V s)'}:
@@ -230,7 +231,81 @@ def script_core(directory):
 				# ~ ),
 			)
 		fig.write_html(
-			str(plots_dir_path/Path('scatter matrix')) + '.html',
+			str(bureaucrat.processed_data_dir_path/Path('scatter_matrix.html')),
+			include_plotlyjs = 'cdn',
+		)
+	
+	# Plot waveforms ---
+	try:
+		waveforms_df = pandas.read_feather(bureaucrat.processed_by_script_dir_path('beta_scan.py')/Path('waveforms.fd'))
+	except FileNotFoundError:
+		waveforms_df = pandas.read_csv(bureaucrat.processed_by_script_dir_path('beta_scan.py')/Path('waveforms.csv'))
+	
+	waveforms_df = waveforms_df.set_index('n_trigger')
+	try:
+		waveforms_df['Accepted'] = filtered_triggers_df
+	except NameError:
+		waveforms_df['Accepted'] = True # Accept all triggers.
+	waveforms_df = waveforms_df.reset_index()
+	
+	if plot_waveforms == True:
+		fig = px.line(
+			waveforms_df,
+			x = 'Time (s)',
+			y = 'Amplitude (V)',
+			facet_row = 'device_name',
+			line_group = 'n_trigger',
+			color = 'Accepted',
+			color_discrete_map = {False: 'red', True: 'green'},
+			render_mode = 'webgl', # https://plotly.com/python/webgl-vs-svg/
+			category_orders = {'device_name': sorted(set(waveforms_df['device_name'])), 'Accepted': [True, False]},
+		)
+		fig.update_yaxes(matches=None)
+		fig.update_traces(line=dict(width=1), opacity=.1)
+		fig.write_html(
+			str(bureaucrat.processed_data_dir_path/Path('waveforms.html')),
+			include_plotlyjs = 'cdn',
+		)
+		
+		accepted_status_for_the_plot = True
+		fig = make_subplots(
+			rows = 2, 
+			cols = 1, 
+			shared_xaxes = True,
+			vertical_spacing = 0.02,
+		)
+		fig.update_xaxes(title_text = 'Time (s)', row=2, col=1)
+		for n_row in [1,2]:
+			fig.update_yaxes(title_text = 'Amplitude (V)', row=n_row, col=1)
+		fig.update_layout(
+			title = f'Waveforms 2D histogram with `accepted={accepted_status_for_the_plot}`<br><sup>Measurement: {bureaucrat.measurement_name}</sup>',
+		)
+		for device_idx,device_name in enumerate(sorted(set(waveforms_df['device_name']))):
+				df = waveforms_df.query(f'device_name=={repr(device_name)}').query(f'Accepted=={accepted_status_for_the_plot}')
+				fig.add_trace(
+					go.Histogram2d(
+						x = df['Time (s)'],
+						y = df['Amplitude (V)'],
+						xbins = dict(
+							start = min(waveforms_df['Time (s)']), 
+							end = max(waveforms_df['Time (s)']), 
+							size = np.diff(sorted(set(waveforms_df['Time (s)'])))[0],
+						),
+						ybins = dict(
+							start = min(df['Amplitude (V)']), 
+							end = max(df['Amplitude (V)']), 
+							size = np.diff(sorted(set(df['Amplitude (V)'])))[0],
+						),
+						colorscale=[[0, 'rgba(0,0,0,0)'], [0.00000001, '#000096'], [.05, '#9300a3'], [.25, '#ff9500'], [1, '#ffffff']],
+						histnorm = 'probability',
+						hoverinfo = 'skip',
+					),
+					row = device_idx+1,
+					col = 1,
+				)
+		fig.update_traces(showscale=False)
+		fig.write_html(
+			str(bureaucrat.processed_data_dir_path/Path('waveforms_histogram.html')),
 			include_plotlyjs = 'cdn',
 		)
 	
@@ -249,16 +324,22 @@ if __name__ == '__main__':
 		dest = 'directory',
 		type = str,
 	)
+	parser.add_argument(
+		'--plot-waveforms',
+		help = 'If this flag is passed, all the waveforms are plotted. Default is not plot, reason is that it takes some time and the resulting plots are heavy.',
+		action = 'store_true',
+		dest = 'plot_waveforms',
+	)
 
 	args = parser.parse_args()
 	if args.directory.lower() != 'all':
-		script_core(Path(args.directory))
+		script_core(Path(args.directory), plot_waveforms = args.plot_waveforms)
 	else:
 		measurements_table_df = mt.create_measurements_table()
 		for measurement_name in sorted(measurements_table_df.index)[::-1]:
 			if mt.retrieve_measurement_type(measurement_name) == 'beta scan':
 				print(f'Processing {measurement_name}...')
 				try:
-					script_core(utils.path_to_measurements_directory/Path(measurement_name))
+					script_core(utils.path_to_measurements_directory/Path(measurement_name), plot_waveforms = args.plot_waveforms)
 				except Exception as e:
 					print(f'Cannot process {measurement_name}, reason {repr(e)}...')
