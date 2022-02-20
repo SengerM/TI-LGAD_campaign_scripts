@@ -42,6 +42,7 @@ NICE_MEASUREMENTS = {
 	'20220128182805_#93_IV_curve',
 	'20220212150246_#84_IV_curve',
 	'20220216110654_#52_IV_curve',
+	'20220217191137_#53_IV_curve'
 }
 
 IV_measurements_table_df = mt.create_measurements_table().query('Type=="IV curve"')
@@ -88,6 +89,11 @@ mean_std_df = mean_std_df.sort_values(
 	by = SORT_VALUES_BY,
 	ascending = True,
 )
+
+try:
+	PLOT_GRAPH_DIMENSIONS['hover_data'].remove('Laser DAC')
+except ValueError:
+	pass
 
 mean_std_df['Annealing time label'] = mean_std_df['Annealing time'].apply(annealing_time_to_label_for_the_plot)
 fig = utils.line(
