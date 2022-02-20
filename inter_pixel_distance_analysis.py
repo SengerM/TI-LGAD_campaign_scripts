@@ -27,15 +27,26 @@ PLOT_GRAPH_DIMENSIONS = dict(
 	line_dash = 'contact type',
 	grouped_legend = True,
 	hover_name = 'Measurement name',
-	hover_data = ['Fluence (neq/cm^2)/1e14','Temperature (°C)'],
+	hover_data = ['Fluence (neq/cm^2)/1e14','Temperature (°C)','Laser DAC'],
 	labels = {
 		'Collected charge (C) mean': 'Collected charge (C)',
 		'Fluence (neq/cm^2)/1e14': 'fluence (n<sub>eq</sub>/cm<sup>2</sup>×10<sup>-14</sup>)',
 		'IPD (m) calibrated': 'IPD (m)',
 		'Annealing time label': 'Annealing time (days)',
+		'trench depth': 'Trench depth',
+		'trenches': 'Trenches',
+		'pixel border': 'Pixel border',
+		'contact type': 'Contact type',
 	},
 	text = 'Annealing time label',
 )
+
+EXCLUDE_VOLTAGE_SCAN_MEASUREMENTS_NAMES = {
+	'20211025184544_#65_sweeping_bias_voltage',
+	'20211114164120_#34_sweeping_bias_voltage',
+	'20220107190757_#111_sweeping_bias_voltage',
+	'20220108211249_#111_sweeping_bias_voltage',
+}
 
 def annealing_time_to_label_for_the_plot(annealing_time):
 	return '' if pandas.isnull(annealing_time) or annealing_time < datetime.timedelta(1) else f'{annealing_time.days}'
@@ -91,6 +102,7 @@ if __name__ == '__main__':
 				'Voltage scan measurement name': this_measurement_belongs_to_the_voltage_scan,
 				'Fluence (neq/cm^2)/1e14': mt.get_measurement_fluence(measurement_name)/1e14,
 				'Annealing time': mt.get_measurement_annealing_time(measurement_name),
+				'Laser DAC': mt.retrieve_laser_DAC(measurement_name),
 			},
 			ignore_index = True,
 		)

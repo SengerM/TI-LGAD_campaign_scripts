@@ -6,7 +6,7 @@ import plotly.express as px
 import measurements_table as mt
 from calculate_interpixel_distance import script_core as calculate_interpixel_distance
 import datetime
-from inter_pixel_distance_analysis import SORT_VALUES_BY, PLOT_GRAPH_DIMENSIONS, annealing_time_to_label_for_the_plot
+from inter_pixel_distance_analysis import SORT_VALUES_BY, PLOT_GRAPH_DIMENSIONS, annealing_time_to_label_for_the_plot, EXCLUDE_VOLTAGE_SCAN_MEASUREMENTS_NAMES
 from scipy.interpolate import interp1d
 
 measurements_table_df = mt.create_measurements_table()
@@ -29,6 +29,9 @@ scans_and_sub_measurements_df.set_index('Scan name', inplace=True)
 
 collected_charge_df = pandas.DataFrame()
 for measurement_name in measurements_table_df.query('Type=="scan 1D"').index:
+	if measurement_name in scans_and_sub_measurements_df.index:
+		if scans_and_sub_measurements_df.loc[measurement_name,'Voltage scan measurement name'] in EXCLUDE_VOLTAGE_SCAN_MEASUREMENTS_NAMES:
+			continue
 	try:
 		_df = pandas.read_csv(utils.path_to_measurements_directory/Path(measurement_name)/Path('calculate_collected_charge_in_Coulomb/collected_charge_statistics.csv'))
 	except FileNotFoundError as e:
@@ -41,7 +44,7 @@ for measurement_name in measurements_table_df.query('Type=="scan 1D"').index:
 	collected_charge_df = collected_charge_df.append(
 		{
 			'Measurement name': measurement_name,
-			'Measurement date': measurements_table_df.loc[measurement_name,'When'],
+			'Measurement when': measurements_table_df.loc[measurement_name,'When'],
 			'Voltage scan measurement name': this_measurement_belongs_to_the_voltage_scan,
 			'Collected charge (C) mean': _df['Collected charge (C) median'].mean(),
 			'Collected charge (C) std': _df['Collected charge (C) MAD_std'].mean(),
@@ -49,6 +52,8 @@ for measurement_name in measurements_table_df.query('Type=="scan 1D"').index:
 			'Collected charge (V s) std': _df['Collected charge (V s) MAD_std'].mean(),
 			'Fluence (neq/cm^2)/1e14': mt.get_measurement_fluence(measurement_name)/1e14,
 			'Annealing time': mt.get_measurement_annealing_time(measurement_name),
+			'Laser DAC': mt.retrieve_laser_DAC(measurement_name),
+			'Laser DAC': mt.retrieve_laser_DAC(measurement_name),
 		},
 		ignore_index = True,
 	)
@@ -64,6 +69,10 @@ collected_charge_df = collected_charge_df.join(utils.bureaucrat.devices_sheet_df
 collected_charge_df.set_index('Measurement name', inplace=True)
 collected_charge_df.reset_index(inplace=True)
 
+# ~ for col in {'Collected charge (C) mean', 'Collected charge (C) std', 'Collected charge (V s) mean', 'Collected charge (V s) std'}:
+	# ~ indices = collected_charge_df['Laser DAC'] == 620
+	# ~ collected_charge_df.loc[indices,col] = 620/573*collected_charge_df.loc[indices,col]
+
 # Now calculate the gain using as a reference the PIN diode scan ---
 
 PIN_DIODE_MEASUREMENT_NAME = '20220129160141_#93_sweeping_bias_voltage'
@@ -76,6 +85,8 @@ pin_diode_average_collected_charge_Vs_interpolation = interp1d(
 )
 
 collected_charge_df['Gain'] = collected_charge_df['Collected charge (V s) mean']/pin_diode_average_collected_charge_Vs_interpolation(collected_charge_df['Bias voltage (V)'])
+
+collected_charge_df['trenches'] = collected_charge_df['trenches'].astype(int)
 
 collected_charge_df = collected_charge_df.sort_values(
 	by = SORT_VALUES_BY,
@@ -120,8 +131,6 @@ fig = utils.line(
 	data_frame = df,
 	x = 'Bias voltage (V)',
 	y = 'Gain',
-	# ~ error_y = 'Collected charge (C) std',
-	# ~ error_y_mode = 'band',
 	title = f'Gain vs bias voltage<br><sup>Plot updated: {datetime.datetime.now()}</sup>',
 	log_y = True,
 	line_group = 'Voltage scan measurement name',
@@ -130,8 +139,9 @@ fig = utils.line(
 fig.add_hline(
 	y = 1,
 	line_dash = 'dash',
-	
 )
+fig.write_html(str(utils.path_to_scripts_output_directory/Path('gain_vs_bias_voltage.html')), include_plotlyjs = 'cdn')
+
 fig.add_annotation(
 	dict(
 		name="draft watermark",

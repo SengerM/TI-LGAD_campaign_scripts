@@ -51,6 +51,7 @@ for measurement_name in scans_and_sub_measurements_df.index:
 			'Measurement name': measurement_name,
 			'Fluence (neq/cm^2)/1e14': mt.get_measurement_fluence(measurement_name)/1e14,
 			'Annealing time': mt.get_measurement_annealing_time(measurement_name),
+			'Laser DAC': mt.retrieve_laser_DAC(measurement_name),
 		},
 		ignore_index = True,
 	)
@@ -80,12 +81,12 @@ fig = utils.line(
 	title = f'Time resolution vs bias voltage<br><sup>Plot updated: {datetime.datetime.now()}</sup>',
 	**PLOT_GRAPH_DIMENSIONS,
 )
-fig.update_yaxes(range=[1e-12,66e-12])
+fig.update_yaxes(type='log',)
 fig.write_html(str(utils.path_to_scripts_output_directory/Path('time_resolution_vs_bias_voltage.html')), include_plotlyjs = 'cdn')
 fig.add_hline(
 	y = 30e-12,
 	line_dash = "dash",
-	annotation_text = '30 ps',
+	# ~ annotation_text = '30 ps',
 )
 fig.add_annotation(
 	dict(
