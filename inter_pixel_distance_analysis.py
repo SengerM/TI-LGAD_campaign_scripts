@@ -8,13 +8,14 @@ from calculate_interpixel_distance import script_core as calculate_interpixel_di
 import datetime
 import numpy as np
 from scipy.stats import median_abs_deviation
+import plotly.io as pio
 
 SORT_VALUES_BY = [
+	'Fluence (neq/cm^2)/1e14',
 	'trench depth',
 	'trenches',
 	'pixel border',
 	'contact type',
-	'Fluence (neq/cm^2)/1e14',
 	'Bias voltage (V)',
 ]
 
@@ -47,6 +48,8 @@ EXCLUDE_VOLTAGE_SCAN_MEASUREMENTS_NAMES = {
 	'20220107190757_#111_sweeping_bias_voltage',
 	'20220108211249_#111_sweeping_bias_voltage',
 }
+
+pio.templates[pio.templates.default].layout.colorway = ['#7d8591','#ffae21','#ed4545','#aa55d9'] # https://community.plotly.com/t/changing-default-color-palette-in-plotly-go-python-sunburst/42758
 
 def annealing_time_to_label_for_the_plot(annealing_time):
 	return '' if pandas.isnull(annealing_time) or annealing_time < datetime.timedelta(1) else f'{annealing_time.days}'
