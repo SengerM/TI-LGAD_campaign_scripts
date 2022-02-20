@@ -251,7 +251,15 @@ def read_previously_calculated_distance_calibration_factor(measurement_name):
 	with open(path_to_measurements_directory/Path(measurement_name)/Path('fit_erf_and_calculate_calibration_factor')/Path('scale_factor.txt'), 'r') as ifile:
 		for line in ifile:
 			if 'multiply_distance_by_this_scale_factor_to_fix_calibration = ' in line:
-				return float(line.replace('multiply_distance_by_this_scale_factor_to_fix_calibration = ',''))
+				calibration_factor = float(line.replace('multiply_distance_by_this_scale_factor_to_fix_calibration = ',''))
+	return calibration_factor
+
+def read_previously_calculated_transimpedance(measurement_name):
+	with open(path_to_measurements_directory/Path(measurement_name)/Path('calculate_collected_charge_in_Coulomb')/Path('calibration_measurement_used.txt'), 'r') as ifile:
+		for line in ifile:
+			if 'the transimpedance value of' in line:
+				transimpedance = float(line.split('the transimpedance value of')[-1].replace(' Ω.',''))
+	return transimpedance
 
 def resample_measured_data(measured_data_df):
 	resampled_df = measured_data_df.groupby(by=['n_channel', 'n_position', 'Pad']).sample(frac=1, replace=True)
