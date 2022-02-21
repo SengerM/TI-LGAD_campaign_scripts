@@ -6,6 +6,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 import numpy as np
 import measurements_table as mt
+from scipy.stats import median_abs_deviation
 
 def do_k1_k2_colormap_plots_with_position_slider(Delta_t_std_df):
 	k1_k2_time_resolution_table = pandas.pivot_table(
@@ -91,7 +92,8 @@ def script_core(measurement_name: str, force=False):
 				temp_df.set_index(['n_position','n_trigger','Pad','Distance (m)','k_1 (%)','k_2 (%)'], inplace=True)
 				Delta_t_df = Delta_t_df.append(temp_df)
 		Delta_t_df.reset_index(inplace=True)
-		Delta_t_std_df = Delta_t_df.groupby(by=['n_position','Pad','Distance (m)','k_1 (%)','k_2 (%)']).std().reset_index()
+		Delta_t_std_df = Delta_t_df.groupby(by=['n_position','Pad','Distance (m)','k_1 (%)','k_2 (%)']).agg(lambda x: utils.k_MAD_TO_STD*median_abs_deviation(x, nan_policy='omit'))
+		Delta_t_std_df = Delta_t_std_df.reset_index()
 		Delta_t_std_df.drop('n_trigger', axis=1, inplace=True)
 		Delta_t_std_df.rename(columns={'Delta_t (s)': 'Delta_t std (s)'}, inplace=True)
 		Delta_t_std_df['Time resolution (s)'] = Delta_t_std_df['Delta_t std (s)']/2**.5
@@ -99,8 +101,10 @@ def script_core(measurement_name: str, force=False):
 		# Plot time resolution vs distance ---
 		k1 = 50
 		k2 = 50
+		best_k1_k2_time_resolution_df = Delta_t_std_df.loc[(Delta_t_std_df['k_1 (%)']==k1)&(Delta_t_std_df['k_2 (%)']==k2)]
+		best_k1_k2_time_resolution_df.reset_index().to_feather(bureaucrat.processed_data_dir_path/Path('time_resolution_vs_distance_for_best_k1_k2.fd'))
 		fig = utils.line(
-			data_frame = Delta_t_std_df.loc[(Delta_t_std_df['k_1 (%)']==k1)&(Delta_t_std_df['k_2 (%)']==k2)],
+			data_frame = best_k1_k2_time_resolution_df,
 			x = 'Distance (m)',
 			y = 'Time resolution (s)',
 			color = 'Pad',
@@ -199,15 +203,14 @@ if __name__ == '__main__':
 	)
 	args = parser.parse_args()
 	if args.directory.lower() != 'all':
-		script_core(Path(args.directory).parts[-1])
+		script_core(Path(args.directory).parts[-1], force=True)
 	else:
 		measurements_table_df = mt.create_measurements_table()
 		for measurement_name in sorted(measurements_table_df.index)[::-1]:
 			if mt.retrieve_measurement_type(measurement_name) == 'scan 1D':
-				if not (utils.path_to_measurements_directory/Path(measurement_name)/Path('calculate_time_resolution')/Path('final_result.txt')).is_file():
-					print(f'Processing {measurement_name}...')
-					try:
-						script_core(measurement_name)
-					except Exception as e:
-						print(f'Cannot process {measurement_name}, reason: {repr(e)}.')
+				print(f'Processing {measurement_name}...')
+				try:
+					script_core(measurement_name)
+				except Exception as e:
+					print(f'Cannot process {measurement_name}, reason: {repr(e)}.')
 
