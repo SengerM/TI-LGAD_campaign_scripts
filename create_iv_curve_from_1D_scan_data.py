@@ -5,6 +5,7 @@ from pathlib import Path
 import plotly.express as px
 import numpy as np
 import measurements_table as mt
+import warnings
 
 def script_core(measurement_name: str, force=False):
 	if not mt.retrieve_measurement_type(measurement_name) == 'scan 1D sweeping bias voltage':
@@ -22,9 +23,13 @@ def script_core(measurement_name: str, force=False):
 	iv_data_df = pandas.DataFrame()
 	with bureaucrat.verify_no_errors_context():
 		for measurement_name in mt.get__1DScan_sweeping_bias_voltage__list_of_fixed_voltage_scans(measurement_name):
-			voltage_summary = pandas.read_csv(utils.path_to_measurements_directory/Path(measurement_name)/Path('summarize_measurement_bias_conditions/bias_voltage_summary.csv'))
+			try:
+				voltage_summary = pandas.read_csv(utils.path_to_measurements_directory/Path(measurement_name)/Path('summarize_measurement_bias_conditions/bias_voltage_summary.csv'))
+				current_summary = pandas.read_csv(utils.path_to_measurements_directory/Path(measurement_name)/Path('summarize_measurement_bias_conditions/bias_current_summary.csv'))
+			except FileNotFoundError:
+				warnings.warn(f'Cannot read data from measurement {repr(measurement_name)}')
+				continue
 			voltage_summary = voltage_summary.iloc[0]
-			current_summary = pandas.read_csv(utils.path_to_measurements_directory/Path(measurement_name)/Path('summarize_measurement_bias_conditions/bias_current_summary.csv'))
 			current_summary = current_summary.iloc[0]
 			iv_data_df = iv_data_df.append(
 				pandas.concat([voltage_summary,current_summary]),
