@@ -42,7 +42,8 @@ NICE_MEASUREMENTS = {
 	'20220128182805_#93_IV_curve',
 	'20220212150246_#84_IV_curve',
 	'20220216110654_#52_IV_curve',
-	'20220217191137_#53_IV_curve'
+	'20220217191137_#53_IV_curve',
+	'20220219135338_#51_IV_curve',
 }
 
 IV_measurements_table_df = mt.create_measurements_table().query('Type=="IV curve"')
@@ -59,6 +60,7 @@ for measurement_name in IV_measurements_table_df.index:
 		df = pandas.read_csv(utils.path_to_measurements_directory/Path(measurement_name)/Path('IV_curve/measured_data.csv'))
 	except Exception as e:
 		raise e
+	df = df.loc[:int(len(df)/2)]
 	df['Bias voltage (V)'] *= -1
 	df['Bias current (A)'] *= -1
 	df['Measurement name'] = measurement_name
@@ -95,10 +97,14 @@ try:
 except ValueError:
 	pass
 
-mean_std_df['Annealing time label'] = mean_std_df['Annealing time'].apply(annealing_time_to_label_for_the_plot)
+df = mean_std_df.copy()
+df['Annealing time label'] = df['Annealing time'].apply(annealing_time_to_label_for_the_plot)
+df = df.query('`Annealing time label`==""')
+# ~ df = df.sample(frac=.3).sort_values(by=['n_voltage'])
+df = df.iloc[::7, :] # Remove some elements so the markers can be seen, otherwise they are just bold lines.
 fig = utils.line(
 	title = f'IV curves<br><sup>Plot updated: {datetime.datetime.now()}</sup>',
-	data_frame = mean_std_df,
+	data_frame = df,
 	x = 'Bias voltage (V) mean',
 	y = 'Bias current (A) mean',
 	error_y = 'Bias current (A) std',
