@@ -63,8 +63,8 @@ def retrieve_bias_voltage(measurement_name):
 		return '-'
 	try:
 		bias_voltage_summary_df = pandas.read_csv(utils.path_to_measurements_directory/Path(measurement_name)/Path('summarize_measurement_bias_conditions/bias_voltage_summary.csv'))
-		bias_voltage = -list(bias_voltage_summary_df['mean (V)'])[0]
-	except FileNotFoundError:
+		bias_voltage = -bias_voltage_summary_df.iloc[0]['Bias voltage (V) mean']
+	except (FileNotFoundError, KeyError):
 		bias_voltage = float('NaN')
 	return bias_voltage
 

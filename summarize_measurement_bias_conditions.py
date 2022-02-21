@@ -30,31 +30,31 @@ def script_core(measurement_name: str, force=False):
 		
 		bias_voltage_dict = {}
 		if 'Bias voltage (V)' in measured_data_df.columns:
-			bias_voltage_dict['mean (V)'] = measured_data_df['Bias voltage (V)'].mean()
-			bias_voltage_dict['std (V)'] = measured_data_df['Bias voltage (V)'].std()
-			bias_voltage_dict['median (V)'] = measured_data_df['Bias voltage (V)'].median()
-			bias_voltage_dict['MAD_std (V)'] = median_abs_deviation(measured_data_df['Bias voltage (V)'])*utils.k_MAD_TO_STD
+			bias_voltage_dict['Bias voltage (V) mean'] = measured_data_df['Bias voltage (V)'].mean()
+			bias_voltage_dict['Bias voltage (V) std'] = measured_data_df['Bias voltage (V)'].std()
+			bias_voltage_dict['Bias voltage (V) median'] = measured_data_df['Bias voltage (V)'].median()
+			bias_voltage_dict['Bias voltage (V) MAD_std'] = median_abs_deviation(measured_data_df['Bias voltage (V)'])*utils.k_MAD_TO_STD
 		else:
 			for var in BIAS_STATS_VARIABLES:
-				bias_voltage_dict[f'{var} (V)'] = float('NaN')
+				bias_voltage_dict[f'Bias voltage (V) {var}'] = float('NaN')
 		bias_voltage_df = pandas.DataFrame()
 		bias_voltage_df = bias_voltage_df.append(bias_voltage_dict, ignore_index=True)
-		if set(bias_voltage_df.columns) != {f'{var} (V)' for var in BIAS_STATS_VARIABLES}:
+		if set(bias_voltage_df.columns) != {f'Bias voltage (V) {var}' for var in BIAS_STATS_VARIABLES}:
 			raise RuntimeError(f'Something is wrong here!')
 		bias_voltage_df.to_csv(bureaucrat.processed_data_dir_path/Path('bias_voltage_summary.csv'), index=False)
 		
 		bias_current_dict = {}
 		if 'Bias current (A)' in measured_data_df.columns:
-			bias_current_dict['mean (A)'] = measured_data_df['Bias current (A)'].mean()
-			bias_current_dict['std (A)'] = measured_data_df['Bias current (A)'].std()
-			bias_current_dict['median (A)'] = measured_data_df['Bias current (A)'].median()
-			bias_current_dict['MAD_std (A)'] = median_abs_deviation(measured_data_df['Bias current (A)'])*utils.k_MAD_TO_STD
+			bias_current_dict['Bias current (A) mean'] = measured_data_df['Bias current (A)'].mean()
+			bias_current_dict['Bias current (A) std'] = measured_data_df['Bias current (A)'].std()
+			bias_current_dict['Bias current (A) median'] = measured_data_df['Bias current (A)'].median()
+			bias_current_dict['Bias current (A) MAD_std'] = median_abs_deviation(measured_data_df['Bias current (A)'])*utils.k_MAD_TO_STD
 		else:
 			for var in BIAS_STATS_VARIABLES:
-				bias_current_dict[f'{var} (A)'] = float('NaN')
+				bias_current_dict[f'Bias current (A) {var}'] = float('NaN')
 		bias_current_df = pandas.DataFrame()
 		bias_current_df = bias_current_df.append(bias_current_dict, ignore_index=True)
-		if set(bias_current_df.columns) != {f'{var} (A)' for var in BIAS_STATS_VARIABLES}:
+		if set(bias_current_df.columns) != {f'Bias current (A) {var}' for var in BIAS_STATS_VARIABLES}:
 			raise RuntimeError(f'Something is wrong here!')
 		bias_current_df.to_csv(bureaucrat.processed_data_dir_path/Path('bias_current_summary.csv'), index=False)
 		
