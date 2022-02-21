@@ -96,6 +96,8 @@ collected_charge_df = collected_charge_df.sort_values(
 df = collected_charge_df.copy().reset_index()
 df = df.query('`Can we trust?`=="yes"')
 df['Annealing time label'] = df['Annealing time'].apply(annealing_time_to_label_for_the_plot)
+df = df.query('`Bias voltage (V)`>20')
+df = df.query('`Annealing time label`==""')
 fig = utils.line(
 	data_frame = df,
 	x = 'Bias voltage (V)',
