@@ -61,18 +61,8 @@ def _retrieve_1D_scan_script_variable_from_backup(measurement_name, variable_nam
 def retrieve_bias_voltage(measurement_name):
 	if retrieve_measurement_type(measurement_name) not in {'scan 1D', 'z scan for focus'}:
 		return '-'
-	bias_voltage_summary_file_path = utils.path_to_measurements_directory/Path(measurement_name)/Path('summarize_measurement_bias_voltage')/Path('bias_voltage_summary.txt')
-	bias_voltage = float('NaN')
-	if bias_voltage_summary_file_path.is_file():
-		with open(bias_voltage_summary_file_path, 'r') as ifile:
-			for line in ifile:
-				if 'Bias voltage mean (V) =' in line:
-					bias_voltage = line.split('=')[-1]
-	try:
-		bias_voltage = float(bias_voltage)
-	except ValueError:
-		pass
-	return -bias_voltage
+	bias_voltage_summary_df = pandas.read_csv(utils.path_to_measurements_directory/Path(measurement_name)/Path('summarize_measurement_bias_conditions/bias_voltage_summary.csv'))
+	return -list(bias_voltage_summary_df['mean (V)'])[0]
 
 def retrieve_laser_DAC(measurement_name):
 	measurement_path = utils.path_to_measurements_directory/Path(measurement_name)
@@ -200,6 +190,17 @@ def create_measurements_table():
 	measurements_df['Can we trust?'] = measurements_df.index.map(can_we_trust_this_measurement)
 	measurements_df['Temperature (°C)'] = measurements_df.index.map(retrieve_measurement_temperature)
 	return measurements_df
+
+def get__1DScan_sweeping_bias_voltage__list_of_fixed_voltage_scans(measurement_name):
+	if retrieve_measurement_type(measurement_name) != 'scan 1D sweeping bias voltage':
+		raise ValueError(f"Measurement must be of type `'scan 1D sweeping bias voltage'` but instead {repr(measurement_name)} is of type {repr(retrieve_measurement_type(measurement_name))}.")
+	scans = []
+	with open(utils.path_to_measurements_directory/Path(measurement_name)/Path('scan_1D_sweeping_bias_voltage/README.txt'), 'r') as ifile:
+		for idx, line in enumerate(ifile):
+			if idx == 0:
+				continue
+			scans.append(line.replace('\n',''))
+	return scans
 
 if __name__ == '__main__':
 	fpath = Path('measurements_table.xlsx')
