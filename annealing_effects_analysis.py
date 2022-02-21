@@ -17,7 +17,7 @@ df = df.dropna()
 df = df.loc[df['Annealing time']>datetime.timedelta(0,0,0)]
 annealed_devices_set = set(df['Measured device'])
 
-# Bias current analysis ---
+# Bias current analysis ------------------------------------------------
 if True:
 	iv_data_df = pandas.DataFrame()
 	for measurement_name in measurements_table_df.loc[measurements_table_df['Measured device'].isin(annealed_devices_set)].query('Type=="IV curve" | Type=="scan 1D sweeping bias voltage"').index:
@@ -89,4 +89,4 @@ if True:
 		line_group = 'Measurement name',
 		**PLOT_GRAPH_DIMENSIONS,
 	)
-	fig.show()
+	fig.write_html(str(utils.path_to_scripts_output_directory/Path('annealing_iv_curves.html')), include_plotlyjs = 'cdn')
