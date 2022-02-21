@@ -280,6 +280,7 @@ def script_core(directory, plot_waveforms=False):
 			fig.update_yaxes(title_text = 'Amplitude (V)', row=n_row, col=1)
 		fig.update_layout(
 			title = f'Waveforms 2D histogram with `accepted={accepted_status_for_the_plot}`<br><sup>Measurement: {bureaucrat.measurement_name}</sup>',
+			legend = dict(yanchor="top", y=1, xanchor="right", x=1.3),
 		)
 		for device_idx,device_name in enumerate(sorted(set(waveforms_df['device_name']))):
 				df = waveforms_df.query(f'device_name=={repr(device_name)}').query(f'Accepted=={accepted_status_for_the_plot}')
@@ -303,6 +304,17 @@ def script_core(directory, plot_waveforms=False):
 					),
 					row = device_idx+1,
 					col = 1,
+				)
+				fig.add_annotation(
+					showarrow = False,
+					text = device_name,
+					textangle = 90,
+					x = 1,
+					xanchor = 'left',
+					xref = "paper",
+					y = 1-(2*device_idx+1)/(2*len(set(waveforms_df['device_name']))),
+					yanchor = 'middle',
+					yref = "paper",
 				)
 		fig.update_traces(showscale=False)
 		fig.write_html(
