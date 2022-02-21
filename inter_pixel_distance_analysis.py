@@ -49,7 +49,9 @@ EXCLUDE_VOLTAGE_SCAN_MEASUREMENTS_NAMES = {
 	'20220108211249_#111_sweeping_bias_voltage',
 }
 
-pio.templates[pio.templates.default].layout.colorway = ['#7d8591','#ffae21','#ed4545','#aa55d9'] # https://community.plotly.com/t/changing-default-color-palette-in-plotly-go-python-sunburst/42758
+COLORS_FOR_EACH_FLUENCE_DICT = {0:'#7d8591',15:'#ffae21',25:'#ed4545',35:'#aa55d9'}
+
+pio.templates[pio.templates.default].layout.colorway = [COLORS_FOR_EACH_FLUENCE_DICT[key] for key in sorted(COLORS_FOR_EACH_FLUENCE_DICT)] # https://community.plotly.com/t/changing-default-color-palette-in-plotly-go-python-sunburst/42758
 
 def annealing_time_to_label_for_the_plot(annealing_time):
 	return '' if pandas.isnull(annealing_time) or annealing_time < datetime.timedelta(1) else f'{annealing_time.days}'
@@ -75,6 +77,9 @@ if __name__ == '__main__':
 
 	interpixel_distances_df = pandas.DataFrame()
 	for measurement_name in measurements_table_df.query('Type=="scan 1D"').index:
+		if measurement_name in scans_and_sub_measurements_df.index:
+			if scans_and_sub_measurements_df.loc[measurement_name,'Voltage scan measurement name'] in EXCLUDE_VOLTAGE_SCAN_MEASUREMENTS_NAMES:
+				continue
 		try:
 			this_measurement_IPD = utils.read_previously_calculated_inter_pixel_distance(measurement_name)
 		except FileNotFoundError:
@@ -129,6 +134,8 @@ if __name__ == '__main__':
 	df = interpixel_distances_df.copy().reset_index()
 	df = df.query('`Can we trust?`=="yes"')
 	df['Annealing time label'] = df['Annealing time'].apply(annealing_time_to_label_for_the_plot)
+	df = df.query('`Bias voltage (V)`>20')
+	df = df.query('`Annealing time label`==""')
 	for col in {'IPD (m)','IPD std bootstrap (m)'}:
 		df[f'{col} calibrated'] = df[col]*df['Distance calibration factor']
 	fig = utils.line(
@@ -136,8 +143,8 @@ if __name__ == '__main__':
 		title = f'Inter pixel distsance vs bias voltage<br><sup>Plot updated: {datetime.datetime.now()}</sup>',
 		x = 'Bias voltage (V)',
 		y = 'IPD (m) calibrated',
-		error_y = 'IPD std bootstrap (m) calibrated',
-		error_y_mode = 'band',
+		# ~ error_y = 'IPD std bootstrap (m) calibrated',
+		# ~ error_y_mode = 'band',
 		line_group = 'Voltage scan measurement name',
 		**PLOT_GRAPH_DIMENSIONS,
 	)
