@@ -5,7 +5,7 @@ from pathlib import Path
 import plotly.express as px
 import measurements_table as mt
 import datetime
-from inter_pixel_distance_analysis import SORT_VALUES_BY, PLOT_GRAPH_DIMENSIONS, annealing_time_to_label_for_the_plot
+from inter_pixel_distance_analysis import SORT_VALUES_BY, PLOT_GRAPH_DIMENSIONS, annealing_time_to_label_for_the_plot, EXCLUDE_VOLTAGE_SCAN_MEASUREMENTS_NAMES
 
 measurements_table_df = mt.create_measurements_table()
 
@@ -27,6 +27,9 @@ scans_and_sub_measurements_df.set_index('Scan name', inplace=True)
 
 time_resolution_df = pandas.DataFrame()
 for measurement_name in scans_and_sub_measurements_df.index:
+	if measurement_name in scans_and_sub_measurements_df.index:
+		if scans_and_sub_measurements_df.loc[measurement_name,'Voltage scan measurement name'] in EXCLUDE_VOLTAGE_SCAN_MEASUREMENTS_NAMES:
+			continue
 	time_resolution_results_file_path = utils.path_to_measurements_directory/Path(measurement_name)/Path('calculate_time_resolution/final_result.txt')
 	if not time_resolution_results_file_path.is_file():
 		print(f'Cannot find time resolution calculation for measurement "{measurement_name}". Missing file is {time_resolution_results_file_path}.')
@@ -73,6 +76,8 @@ time_resolution_df = time_resolution_df.sort_values(
 df = time_resolution_df.reset_index()
 df = df.query('`Can we trust?`=="yes"')
 df['Annealing time label'] = df['Annealing time'].apply(annealing_time_to_label_for_the_plot)
+df = df.query('`Bias voltage (V)`>20')
+df = df.query('`Annealing time label`==""')
 fig = utils.line(
 	data_frame = df,
 	line_group = 'Voltage scan measurement name',
