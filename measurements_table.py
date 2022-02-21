@@ -10,10 +10,16 @@ possible_paths_of_1D_scan_scripts_backups = [
 ]
 
 def retrieve_device_name(measurement_name):
-	for string in measurement_name.split('_'):
-		if '#' in string:
-			return string.replace('#','')
-	return None
+	device_name = None
+	if measurement_name.count('#') == 1: # I expect the names to be of the type "Scan1D_#50_bla". If there is more than one '#' I don't know what to say...
+		for string in measurement_name.split('_'):
+			if '#' in string:
+				device_name = string.replace('#','')
+		try:
+			int(device_name)
+		except (TypeError, ValueError):
+			device_name = None
+	return device_name
 
 def retrieve_measurement_type(measurement_name):
 	measurement_path = utils.path_to_measurements_directory/Path(measurement_name)
@@ -171,13 +177,14 @@ def get_measurement_annealing_time(measurement_name: str):
 	"""Returns the annealing time as a datetime.timedelta object."""
 	measurement_when = retrieve_measurement_when(measurement_name)
 	measured_device = retrieve_device_name(measurement_name)
+	if measured_device is None:
+		return pandas.Timestamp('NaT')
 	if measurement_when < utils.bureaucrat.devices_sheet_df.loc[measured_device,'annealing started']:
 		return datetime.timedelta(0)
 	elif measurement_when > utils.bureaucrat.devices_sheet_df.loc[measured_device,'annealing ended']:
 		return utils.bureaucrat.devices_sheet_df.loc[measured_device,'annealing ended'] - utils.bureaucrat.devices_sheet_df.loc[measured_device,'annealing started']
 	else: # This is a strange case, we should be here only if there is no information about annealing or if the measurement was done during the annealing process.
 		return pandas.Timestamp('NaT')
-	
 	raise NotImplementedError()
 
 def create_measurements_table():
