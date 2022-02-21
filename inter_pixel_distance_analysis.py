@@ -38,6 +38,8 @@ PLOT_GRAPH_DIMENSIONS = dict(
 		'trenches': 'Trenches',
 		'pixel border': 'Pixel border',
 		'contact type': 'Contact type',
+		'Bias current (A) mean': 'Bias current (A)',
+		'Bias voltage (V) mean': 'Bias voltage (V)',
 	},
 	text = 'Annealing time label',
 )
