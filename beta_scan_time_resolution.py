@@ -20,8 +20,8 @@ def display_dataframe(df):
 def resample_measured_data(measured_data_df):
 	resampled_df = measured_data_df.pivot(
 		index = 'n_trigger',
-		columns = 'n_channel',
-		values = set(measured_data_df.columns) - {'n_trigger','n_channel'},
+		columns = 'device_name',
+		values = set(measured_data_df.columns) - {'n_trigger','device_name'},
 	)
 	resampled_df = resampled_df.sample(frac=1, replace=True)
 	resampled_df = resampled_df.stack()
@@ -206,9 +206,9 @@ def script_core(measurement_name: str, force=False, n_bootstrap=0):
 	
 	with bureaucrat.verify_no_errors_context():
 		try:
-			measured_data_df = pandas.read_feather(bureaucrat.processed_by_script_dir_path('acquire_and_parse_with_oscilloscope.py')/Path('measured_data.fd'))
+			measured_data_df = pandas.read_feather(bureaucrat.processed_by_script_dir_path('beta_scan.py')/Path('measured_data.fd'))
 		except FileNotFoundError:
-			measured_data_df = pandas.read_csv(bureaucrat.processed_by_script_dir_path('acquire_and_parse_with_oscilloscope.py')/Path('measured_data.csv'))
+			measured_data_df = pandas.read_csv(bureaucrat.processed_by_script_dir_path('beta_scan.py')/Path('measured_data.csv'))
 		
 		beta_scan_was_cleaned = bureaucrat.job_successfully_completed_by_script('clean_beta_scan.py')
 		if beta_scan_was_cleaned:
@@ -221,17 +221,17 @@ def script_core(measurement_name: str, force=False, n_bootstrap=0):
 			measured_data_df['accepted'] = True
 		measured_data_df = measured_data_df.query('accepted==True') # From now on we drop all useless data.
 		
-		if len(set(measured_data_df['n_channel'])) == 2:
-			channels = list(set(measured_data_df['n_channel']))
+		if len(set(measured_data_df['device_name'])) == 2:
+			devices_names = list(set(measured_data_df['device_name']))
 		else:
-			print(f'This measurement contains more than two channels, namely: {set(measured_data_df["n_channel"])}. Which ones do you want to use to calculate the time resolution?')
-			ch_A = int(input(f'Enter number of first channel: '))
-			ch_B = int(input(f'Enter number of first channel: '))
-			channels = set([ch_A, ch_B])
-			measured_data_df = measured_data_df.loc[measured_data_df['n_channel'].isin(channels)] # Discard all other channels.
+			print(f'This measurement contains more than two devices, namely: {set(measured_data_df["device_name"])}. Which ones do you want to use to calculate the time resolution?')
+			ch_A = int(input(f'Enter name of first device: '))
+			ch_B = int(input(f'Enter name of second device: '))
+			devices_names = set([ch_A, ch_B])
+			measured_data_df = measured_data_df.loc[measured_data_df['device_name'].isin(device_name)] # Discard all other devices.
 		
-		for idx,n_channel in enumerate(channels): # This is so I can use the same framework as in the TCT where there is only one detector but two pulses.
-			measured_data_df.loc[measured_data_df['n_channel']==n_channel,'n_pulse'] = idx+1
+		for idx,device_name in enumerate(devices_names): # This is so I can use the same framework as in the TCT where there is only one detector but two pulses.
+			measured_data_df.loc[measured_data_df['device_name']==device_name,'n_pulse'] = idx+1
 		
 		final_results_df = pandas.DataFrame()
 		bootstrapped_replicas_df = pandas.DataFrame()
