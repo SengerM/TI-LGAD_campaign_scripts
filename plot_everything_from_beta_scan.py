@@ -137,7 +137,26 @@ def script_core(directory):
 			str(bureaucrat.processed_data_dir_path/Path(f'{column} langauss fit.html')),
 			include_plotlyjs = 'cdn',
 		)
-
+	
+	# ~ # Plot waveforms ---
+	# ~ try:
+		# ~ waveforms_df = pandas.read_feather(bureaucrat.processed_by_script_dir_path('beta_scan.py')/Path('waveforms.fd'))
+	# ~ except FileNotFoundError:
+		# ~ waveforms_df = pandas.read_csv(bureaucrat.processed_by_script_dir_path('beta_scan.py')/Path('waveforms.csv'))
+	
+	# ~ fig = px.line(
+		# ~ waveforms_df,
+		# ~ x = 'Time (s)',
+		# ~ y = 'Amplitude (V)',
+		# ~ facet_row = 'device_name',
+		# ~ line_group = 'n_trigger',
+		# ~ render_mode = 'webgl', # https://plotly.com/python/webgl-vs-svg/
+	# ~ )
+	# ~ fig.write_html(
+		# ~ str(bureaucrat.processed_data_dir_path/Path('waveforms.html')),
+		# ~ include_plotlyjs = 'cdn',
+	# ~ )
+	
 ########################################################################
 
 if __name__ == '__main__':
