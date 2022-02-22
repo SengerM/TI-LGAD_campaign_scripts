@@ -28,12 +28,13 @@ def retrieve_measurement_type(measurement_name):
 	is_1D_scan = any(pattern.lower() in measurement_name.lower() for pattern in {'1DScan','LinearScan','linear_x','linear_y','linearx','lineary'}) or (any(subdir in list_of_directories_within_this_measurement for subdir in {'scan_1D', 'linear_scan_many_triggers_per_point', '1D_scan'}) and 'z_scan_to_find_focus' not in list_of_directories_within_this_measurement)
 	is_2D_map = any(pattern.lower() in measurement_name.lower() for pattern in {'2D_map','2DMap','2DScan'})
 	is_z_scan_to_find_focus = any(pattern.lower() in measurement_name.lower() for pattern in {'focus','z_scan'})
-	is_beta_scan = any(pattern.lower() in measurement_name.lower() for pattern in {'beta scan','betaScan','beta'})
+	is_beta_scan = any(pattern.lower() in measurement_name.lower() for pattern in {'beta scan','betaScan','beta'}) and 'beta_scan_sweeping_bias_voltage' not in list_of_directories_within_this_measurement
 	is_IV_curve = 'IV' in measurement_name or (measurement_path/Path('IV_curve')).is_dir()
 	is_1D_scan_sweeping_bias_voltage = 'sweeping_bias_voltage' in measurement_name and 'scan_1D_sweeping_bias_voltage' in list_of_directories_within_this_measurement
 	is_laser_DAC_scan = any(pattern.lower() in measurement_name.lower() for pattern in {'laserDacScan','LaserIntensityScan'})
+	is_beta_scan_sweeping_bias_voltage = 'beta_scan_sweeping_bias_voltage' in list_of_directories_within_this_measurement
 	
-	if [is_1D_scan, is_2D_map, is_z_scan_to_find_focus, is_beta_scan, is_IV_curve, is_1D_scan_sweeping_bias_voltage, is_laser_DAC_scan].count(True) != 1: # Cannot determine what this measurement is...
+	if [is_1D_scan, is_2D_map, is_z_scan_to_find_focus, is_beta_scan, is_IV_curve, is_1D_scan_sweeping_bias_voltage, is_laser_DAC_scan, is_beta_scan_sweeping_bias_voltage].count(True) != 1: # Cannot determine what this measurement is...
 		return None
 	if is_1D_scan:
 		return 'scan 1D'
@@ -49,6 +50,8 @@ def retrieve_measurement_type(measurement_name):
 		return 'scan 1D sweeping bias voltage'
 	elif is_laser_DAC_scan:
 		return 'laser DAC scan'
+	elif is_beta_scan_sweeping_bias_voltage:
+		return 'beta scan sweeping bias voltage'
 
 def _retrieve_1D_scan_script_variable_from_backup(measurement_name, variable_name):
 	measurement_path = utils.path_to_measurements_directory/Path(measurement_name)
