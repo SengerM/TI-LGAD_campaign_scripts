@@ -68,13 +68,24 @@ def _retrieve_1D_scan_script_variable_from_backup(measurement_name, variable_nam
 	return '?'
 
 def retrieve_bias_voltage(measurement_name):
-	if retrieve_measurement_type(measurement_name) not in {'scan 1D', 'z scan for focus'}:
+	measurement_type = retrieve_measurement_type(measurement_name)
+	if measurement_type not in {'scan 1D', 'z scan for focus', 'beta scan'}:
 		return '-'
-	try:
-		bias_voltage_summary_df = pandas.read_csv(utils.path_to_measurements_directory/Path(measurement_name)/Path('summarize_measurement_bias_conditions/bias_voltage_summary.csv'))
-		bias_voltage = -bias_voltage_summary_df.iloc[0]['Bias voltage (V) mean']
-	except (FileNotFoundError, KeyError):
-		bias_voltage = float('NaN')
+	if measurement_type in {'scan 1D', 'z scan for focus'}:
+		try:
+			bias_voltage_summary_df = pandas.read_csv(utils.path_to_measurements_directory/Path(measurement_name)/Path('summarize_measurement_bias_conditions/bias_voltage_summary.csv'))
+			bias_voltage = -bias_voltage_summary_df.iloc[0]['Bias voltage (V) mean']
+		except (FileNotFoundError, KeyError):
+			bias_voltage = float('NaN')
+	elif measurement_type in {'beta scan'}:
+		voltage_should_be_here = measurement_name.split('_')[-1]
+		if voltage_should_be_here[-1] == 'V':
+			try:
+				bias_voltage = float(voltage_should_be_here[:-1])
+			except ValueError:
+				bias_voltage = float('NaN')
+		else:
+			bias_voltage = float('NaN')
 	return bias_voltage
 
 def retrieve_laser_DAC(measurement_name):
