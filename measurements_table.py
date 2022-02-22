@@ -216,6 +216,17 @@ def get__1DScan_sweeping_bias_voltage__list_of_fixed_voltage_scans(measurement_n
 			scans.append(line.replace('\n',''))
 	return scans
 
+def get__BetaScan_sweeping_bias_voltage__list_of_fixed_voltage_scans(measurement_name):
+	if retrieve_measurement_type(measurement_name) != 'beta scan sweeping bias voltage':
+		raise ValueError(f"Measurement must be of type `'beta scan sweeping bias voltage'` but instead {repr(measurement_name)} is of type {repr(retrieve_measurement_type(measurement_name))}.")
+	scans = []
+	with open(utils.path_to_measurements_directory/Path(measurement_name)/Path('beta_scan_sweeping_bias_voltage/README.txt'), 'r') as ifile:
+		for idx, line in enumerate(ifile):
+			if idx == 0:
+				continue
+			scans.append(line.replace('\n',''))
+	return scans
+
 if __name__ == '__main__':
 	fpath = Path('measurements_table.xlsx')
 	create_measurements_table().to_excel(fpath)
