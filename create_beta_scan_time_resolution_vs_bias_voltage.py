@@ -29,9 +29,15 @@ def script_core(measurement_name: str, force=False):
 			except FileNotFoundError:
 				warnings.warn(f'Cannot read data from measurement {repr(measurement_name)}')
 				continue
+			try:
+				bootstrap_df = pandas.read_csv(utils.path_to_measurements_directory/Path(measurement_name)/Path('beta_scan_time_resolution/bootstrap_results.csv'))
+				this_measurement_error = bootstrap_df['sigma from Gaussian fit (s)'].std()
+			except FileNotFoundError:
+				this_measurement_error = float('NaN')
 			time_resolution_df = time_resolution_df.append(
 				{
 					'sigma from Gaussian fit (s)': float(list(df.query('type=="estimator value on the data"')['sigma from Gaussian fit (s)'])[0]),
+					'sigma from Gaussian fit (s) bootstrapped error estimation': this_measurement_error,
 					'Measurement name': measurement_name,
 					'Bias voltage (V)': mt.retrieve_bias_voltage(measurement_name),
 					'Fluence (neq/cm^2)/1e14': mt.get_measurement_fluence(measurement_name)/1e14,
@@ -49,6 +55,7 @@ def script_core(measurement_name: str, force=False):
 			data_frame = df,
 			x = 'Bias voltage (V)',
 			y = 'Time resolution (s)',
+			error_y = 'sigma from Gaussian fit (s) bootstrapped error estimation',
 			hover_data = sorted(df),
 			markers = 'circle',
 		)

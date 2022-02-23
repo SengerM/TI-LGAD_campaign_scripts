@@ -49,10 +49,15 @@ fig = utils.line(
 	title = f'Time resolution (beta source) vs bias voltage<br><sup>Plot updated: {datetime.datetime.now()}</sup>',
 	x = 'Bias voltage (V)',
 	y = 'Time resolution (s)',
+	error_y = 'sigma from Gaussian fit (s) bootstrapped error estimation',
+	error_y_mode = 'band',
 	line_group = 'Voltage scan measurement name',
 	color_discrete_map = COLORS_FOR_EACH_FLUENCE_DICT,
 	**PLOT_GRAPH_DIMENSIONS,
 )
+# ~ fig.update_traces(
+	# ~ error_y = dict(width=2, thickness=1),
+# ~ )
 fig.show()
 
 fig = utils.line(
