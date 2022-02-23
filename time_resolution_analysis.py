@@ -83,10 +83,10 @@ fig = utils.line(
 	line_group = 'Voltage scan measurement name',
 	x = 'Bias voltage (V)',
 	y = 'Time resolution (s)',
-	title = f'Time resolution vs bias voltage<br><sup>Plot updated: {datetime.datetime.now()}</sup>',
+	title = f'Time resolution (TCT) vs bias voltage<br><sup>Plot updated: {datetime.datetime.now()}</sup>',
 	**PLOT_GRAPH_DIMENSIONS,
 )
-fig.update_yaxes(type='log',)
+# ~ fig.update_yaxes(type='log',)
 fig.write_html(str(utils.path_to_scripts_output_directory/Path('time_resolution_vs_bias_voltage.html')), include_plotlyjs = 'cdn')
 fig.add_hline(
 	y = 30e-12,

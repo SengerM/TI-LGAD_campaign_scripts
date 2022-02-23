@@ -105,7 +105,7 @@ fig = utils.line(
 	# ~ error_y = 'Collected charge (C) std',
 	# ~ error_y_mode = 'band',
 	title = f'Collected charge vs bias voltage<br><sup>Plot updated: {datetime.datetime.now()}</sup>',
-	log_y = True,
+	# ~ log_y = True,
 	line_group = 'Voltage scan measurement name',
 	**PLOT_GRAPH_DIMENSIONS,
 )
@@ -134,7 +134,7 @@ fig = utils.line(
 	x = 'Bias voltage (V)',
 	y = 'Gain',
 	title = f'Gain vs bias voltage<br><sup>Plot updated: {datetime.datetime.now()}</sup>',
-	log_y = True,
+	# ~ log_y = True,
 	line_group = 'Voltage scan measurement name',
 	**PLOT_GRAPH_DIMENSIONS,
 )
