@@ -238,6 +238,16 @@ def get__BetaScan_sweeping_bias_voltage__list_of_fixed_voltage_scans(measurement
 			scans.append(line.replace('\n',''))
 	return scans
 
+def get_voltage_scan_sub_measurements(measurement_name):
+	VALID_MEASUREMENT_NAMES = {'scan 1D sweeping bias voltage','beta scan sweeping bias voltage'}
+	measurement_type = retrieve_measurement_type(measurement_name)
+	if measurement_type not in VALID_MEASUREMENT_NAMES:
+		raise ValueError(f'`measurement_name` must be one of these types: {VALID_MEASUREMENT_NAMES}. However, you gave me {repr(measurement_name)} which is of type {repr(measurement_type)}')
+	if measurement_type == 'scan 1D sweeping bias voltage':
+		return get__1DScan_sweeping_bias_voltage__list_of_fixed_voltage_scans(measurement_name)
+	elif measurement_type == 'beta scan sweeping bias voltage':
+		return get__BetaScan_sweeping_bias_voltage__list_of_fixed_voltage_scans(measurement_name)
+
 if __name__ == '__main__':
 	fpath = Path('measurements_table.xlsx')
 	create_measurements_table().to_excel(fpath)
