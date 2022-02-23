@@ -54,6 +54,19 @@ EXCLUDE_VOLTAGE_SCAN_MEASUREMENTS_NAMES = {
 
 COLORS_FOR_EACH_FLUENCE_DICT = {0:'#7d8591',15:'#ffae21',25:'#ed4545',35:'#aa55d9'}
 
+PRELIMINARY_ANNOTATION = dict(
+	name="draft watermark",
+	text="PRELIMINARY",
+	textangle=-30,
+	opacity=0.1,
+	font=dict(color="black", size=100),
+	xref="paper",
+	yref="paper",
+	x=0.5,
+	y=0.5,
+	showarrow=False,
+)
+
 pio.templates[pio.templates.default].layout.colorway = [COLORS_FOR_EACH_FLUENCE_DICT[key] for key in sorted(COLORS_FOR_EACH_FLUENCE_DICT)] # https://community.plotly.com/t/changing-default-color-palette-in-plotly-go-python-sunburst/42758
 
 def annealing_time_to_label_for_the_plot(annealing_time):
@@ -155,18 +168,5 @@ if __name__ == '__main__':
 
 	fig.write_html(str(utils.path_to_scripts_output_directory/Path('ipd_vs_bias_voltage.html')), include_plotlyjs = 'cdn')
 
-	fig.add_annotation(
-		dict(
-			name="draft watermark",
-			text="PRELIMINARY",
-			textangle=-30,
-			opacity=0.1,
-			font=dict(color="black", size=100),
-			xref="paper",
-			yref="paper",
-			x=0.5,
-			y=0.5,
-			showarrow=False,
-		)
-	)
+	fig.add_annotation(PRELIMINARY_ANNOTATION)
 	fig.write_html(str(utils.path_to_dashboard_media_directory/Path('ipd_vs_bias_voltage.html')), include_plotlyjs = 'cdn')

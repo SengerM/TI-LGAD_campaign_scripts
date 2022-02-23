@@ -2,7 +2,7 @@ import pandas
 import utils
 import plotly.express as px
 import numpy as np
-from inter_pixel_distance_analysis import SORT_VALUES_BY, PLOT_GRAPH_DIMENSIONS, EXCLUDE_VOLTAGE_SCAN_MEASUREMENTS_NAMES, annealing_time_to_label_for_the_plot, COLORS_FOR_EACH_FLUENCE_DICT
+from inter_pixel_distance_analysis import SORT_VALUES_BY, PLOT_GRAPH_DIMENSIONS, EXCLUDE_VOLTAGE_SCAN_MEASUREMENTS_NAMES, annealing_time_to_label_for_the_plot, COLORS_FOR_EACH_FLUENCE_DICT, PRELIMINARY_ANNOTATION
 import measurements_table as mt
 from pathlib import Path
 import datetime
@@ -10,6 +10,10 @@ import warnings
 
 try:
 	PLOT_GRAPH_DIMENSIONS['hover_data'].remove('Laser DAC')
+except ValueError:
+	pass
+try:
+	PLOT_GRAPH_DIMENSIONS.pop('grouped_legend')
 except ValueError:
 	pass
 
@@ -50,15 +54,19 @@ fig = utils.line(
 	x = 'Bias voltage (V)',
 	y = 'Time resolution (s)',
 	error_y = 'sigma from Gaussian fit (s) bootstrapped error estimation',
-	error_y_mode = 'band',
+	# ~ error_y_mode = 'band',
 	line_group = 'Voltage scan measurement name',
 	color_discrete_map = COLORS_FOR_EACH_FLUENCE_DICT,
 	**PLOT_GRAPH_DIMENSIONS,
 )
-# ~ fig.update_traces(
-	# ~ error_y = dict(width=2, thickness=1),
-# ~ )
-fig.show()
+fig.update_traces(
+	error_y = dict(width=2, thickness=1),
+)
+fig.add_annotation(PRELIMINARY_ANNOTATION)
+fig.write_html(
+	str(utils.path_to_dashboard_media_directory/Path('beta_source_time_resolution_vs_bias_voltage.html')), 
+	include_plotlyjs = 'cdn',
+)
 
 fig = utils.line(
 	data_frame = collected_charge_df,
@@ -69,4 +77,8 @@ fig = utils.line(
 	color_discrete_map = COLORS_FOR_EACH_FLUENCE_DICT,
 	**PLOT_GRAPH_DIMENSIONS,
 )
-fig.show()
+fig.add_annotation(PRELIMINARY_ANNOTATION)
+fig.write_html(
+	str(utils.path_to_dashboard_media_directory/Path('beta_source_collected_charge_vs_bias_voltage.html')), 
+	include_plotlyjs = 'cdn',
+)
