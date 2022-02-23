@@ -31,7 +31,7 @@ PLOT_GRAPH_DIMENSIONS = dict(
 	hover_data = ['Fluence (neq/cm^2)/1e14','Temperature (°C)','Laser DAC'],
 	labels = {
 		'Collected charge (C) mean': 'Collected charge (C)',
-		'Fluence (neq/cm^2)/1e14': 'fluence (n<sub>eq</sub>/cm<sup>2</sup>×10<sup>-14</sup>)',
+		'Fluence (neq/cm^2)/1e14': 'Fluence (n<sub>eq</sub>/cm<sup>2</sup>×10<sup>-14</sup>)',
 		'IPD (m) calibrated': 'IPD (m)',
 		'Annealing time label': 'Annealing time (days)',
 		'trench depth': 'Trench depth',
@@ -40,6 +40,7 @@ PLOT_GRAPH_DIMENSIONS = dict(
 		'contact type': 'Contact type',
 		'Bias current (A) mean': 'Bias current (A)',
 		'Bias voltage (V) mean': 'Bias voltage (V)',
+		'Collected charge (V s) x_mpv': 'Collected charge MPV (V s)',
 	},
 	text = 'Annealing time label',
 )
