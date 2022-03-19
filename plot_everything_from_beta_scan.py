@@ -1,4 +1,4 @@
-from data_processing_bureaucrat.Bureaucrat import Bureaucrat
+from bureaucrat.Bureaucrat import Bureaucrat # https://github.com/SengerM/bureaucrat
 from pathlib import Path
 import pandas
 import plotly.graph_objects as go
