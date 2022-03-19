@@ -22,6 +22,8 @@ measurements_table_df = mt.create_measurements_table()
 time_resolution_df = pandas.DataFrame()
 collected_charge_df = pandas.DataFrame()
 for measurement_name in measurements_table_df.query("Type=='beta scan sweeping bias voltage'").index:
+	# ~ if measurement_name in {'20220222164957_BetaScan_#36_sweeping_bias_voltage'}:#,'20220223172842_BetaScan_#68_sweeping_bias_voltage'}:
+		# ~ continue
 	_ = utils.path_to_measurements_directory/Path(measurement_name)/Path('create_beta_scan_time_resolution_vs_bias_voltage/time_resolution_vs_bias_voltage.csv')
 	if _.is_file():
 		df_for_time_resolution = pandas.read_csv(_)

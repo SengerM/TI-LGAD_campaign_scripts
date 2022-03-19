@@ -55,15 +55,15 @@ EXCLUDE_VOLTAGE_SCAN_MEASUREMENTS_NAMES = {
 COLORS_FOR_EACH_FLUENCE_DICT = {0:'#7d8591',15:'#ffae21',25:'#ed4545',35:'#aa55d9'}
 
 PRELIMINARY_ANNOTATION = dict(
-	name="draft watermark",
-	text="PRELIMINARY",
-	textangle=-30,
-	opacity=0.1,
-	font=dict(color="black", size=100),
-	xref="paper",
-	yref="paper",
-	x=0.5,
-	y=0.5,
+	name = "draft watermark",
+	text = "",#"PRELIMINARY",
+	textangle = -30,
+	opacity = 0.1,
+	font = dict(color="red", size=100),
+	xref = "paper",
+	yref = "paper",
+	x = 0.5,
+	y = 0.5,
 	showarrow=False,
 )
 

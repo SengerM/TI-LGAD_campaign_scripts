@@ -66,7 +66,7 @@ if True: # Collected charge vs distance ---
 		)
 		fig.show()
 
-if False: # Time resolution vs distance ---
+if True: # Time resolution vs distance ---
 	time_resolution_df = pandas.DataFrame()
 	for measurement_name in LINEAR_SCANS_TO_COMPARE:
 		df = pandas.read_feather(utils.path_to_measurements_directory/Path(measurement_name)/Path('calculate_time_resolution/time_resolution_vs_distance_for_best_k1_k2.fd'))

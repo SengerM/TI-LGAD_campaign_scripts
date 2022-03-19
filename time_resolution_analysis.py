@@ -5,7 +5,7 @@ from pathlib import Path
 import plotly.express as px
 import measurements_table as mt
 import datetime
-from inter_pixel_distance_analysis import SORT_VALUES_BY, PLOT_GRAPH_DIMENSIONS, annealing_time_to_label_for_the_plot, EXCLUDE_VOLTAGE_SCAN_MEASUREMENTS_NAMES
+from inter_pixel_distance_analysis import SORT_VALUES_BY, PLOT_GRAPH_DIMENSIONS, annealing_time_to_label_for_the_plot, EXCLUDE_VOLTAGE_SCAN_MEASUREMENTS_NAMES, PRELIMINARY_ANNOTATION
 
 measurements_table_df = mt.create_measurements_table()
 
@@ -86,25 +86,15 @@ fig = utils.line(
 	title = f'Time resolution (TCT) vs bias voltage<br><sup>Plot updated: {datetime.datetime.now()}</sup>',
 	**PLOT_GRAPH_DIMENSIONS,
 )
-# ~ fig.update_yaxes(type='log',)
+fig.update_yaxes(
+	# ~ type = 'log',
+	range = [0, 50e-12]
+)
 fig.write_html(str(utils.path_to_scripts_output_directory/Path('time_resolution_vs_bias_voltage.html')), include_plotlyjs = 'cdn')
-fig.add_hline(
-	y = 30e-12,
-	line_dash = "dash",
+# ~ fig.add_hline(
+	# ~ y = 30e-12,
+	# ~ line_dash = "dash",
 	# ~ annotation_text = '30 ps',
-)
-fig.add_annotation(
-	dict(
-		name="draft watermark",
-		text="PRELIMINARY",
-		textangle=-30,
-		opacity=0.1,
-		font=dict(color="black", size=100),
-		xref="paper",
-		yref="paper",
-		x=0.5,
-		y=0.5,
-		showarrow=False,
-	)
-)
+# ~ )
+fig.add_annotation(PRELIMINARY_ANNOTATION)
 fig.write_html(str(utils.path_to_dashboard_media_directory/Path('time_resolution_vs_bias_voltage.html')), include_plotlyjs = 'cdn')

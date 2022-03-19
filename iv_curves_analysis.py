@@ -4,7 +4,7 @@ import utils
 import pandas
 import plotly.express as px
 import datetime
-from inter_pixel_distance_analysis import SORT_VALUES_BY, PLOT_GRAPH_DIMENSIONS, annealing_time_to_label_for_the_plot
+from inter_pixel_distance_analysis import SORT_VALUES_BY, PLOT_GRAPH_DIMENSIONS, annealing_time_to_label_for_the_plot, PRELIMINARY_ANNOTATION
 
 NICE_MEASUREMENTS = {
 	# Non irradiated ---
@@ -22,6 +22,7 @@ NICE_MEASUREMENTS = {
 	'20211103171051_#14_IV_curve',
 	'20211113164217_#87_IV_curve',
 	'20211112065952_#78_IV_curve',
+	'20211104203325_#45_IV_curve_not_all_pads_grounded',
 	# ~ '20220107162047_#111_IV_curve_RoomT',
 	# ~ '20220107170700_#111_IV_curve_-20°C',
 	# ~ # Irradiated devices ---
@@ -120,24 +121,10 @@ fig = utils.line(
 	y = 'Bias current (A) mean',
 	error_y = 'Bias current (A) std',
 	error_x = 'Bias voltage (V) std',
-	log_y = True,
 	line_group = 'Measurement name',
 	**PLOT_GRAPH_DIMENSIONS,
 )
 fig.write_html(str(utils.path_to_scripts_output_directory/Path('iv_curves.html')), include_plotlyjs = 'cdn')
 
-fig.add_annotation(
-	dict(
-		name="draft watermark",
-		text="PRELIMINARY",
-		textangle=-30,
-		opacity=0.1,
-		font=dict(color="black", size=100),
-		xref="paper",
-		yref="paper",
-		x=0.5,
-		y=0.5,
-		showarrow=False,
-	)
-)
+fig.add_annotation(PRELIMINARY_ANNOTATION)
 fig.write_html(str(utils.path_to_dashboard_media_directory/Path('iv_curves.html')), include_plotlyjs = 'cdn')

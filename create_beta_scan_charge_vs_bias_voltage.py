@@ -31,7 +31,7 @@ def script_core(measurement_name: str, force=False):
 				continue
 			collected_charge_df = collected_charge_df.append(
 				{
-					'Collected charge (V s) x_mpv': float(df.query(f'`Device name`=="{"#"+mt.retrieve_device_name(measurement_name)}"').query('Variable=="Collected charge (V s) x_mpv"').query('Type=="fit to data"')['Value']),
+					'Collected charge (V s) x_mpv': float(df.query(f'`Device name`=="{mt.retrieve_device_name(measurement_name)}"').query('Variable=="Collected charge (V s) x_mpv"').query('Type=="fit to data"')['Value']),
 					'Measurement name': measurement_name,
 					'Bias voltage (V)': mt.retrieve_bias_voltage(measurement_name),
 					'Fluence (neq/cm^2)/1e14': mt.get_measurement_fluence(measurement_name)/1e14,

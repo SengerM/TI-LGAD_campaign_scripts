@@ -35,6 +35,7 @@ def script_core(measurement_name: str, force=False):
 				pandas.concat([voltage_summary,current_summary]),
 				ignore_index = True,
 			)
+			iv_data_df['Measurement name'] = measurement_name
 		for variable in {'Bias voltage (V)','Bias current (A)'}:
 			for stat in {'mean','median'}:
 				col = f'{variable} {stat}'

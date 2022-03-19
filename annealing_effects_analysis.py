@@ -85,8 +85,8 @@ if True:
 		y = 'Bias current (A) mean',
 		error_y = 'Bias current (A) std',
 		error_x = 'Bias voltage (V) std',
-		log_y = True,
+		# ~ log_y = True,
 		line_group = 'Measurement name',
 		**PLOT_GRAPH_DIMENSIONS,
 	)
-	fig.write_html(str(utils.path_to_scripts_output_directory/Path('annealing_iv_curves.html')), include_plotlyjs = 'cdn')
+	fig.write_html(str(utils.path_to_dashboard_media_directory/Path('annealing_iv_curves.html')), include_plotlyjs = 'cdn')
