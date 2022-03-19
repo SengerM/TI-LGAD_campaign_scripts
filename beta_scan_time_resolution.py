@@ -302,12 +302,12 @@ def script_core(measurement_name: str, force=False, n_bootstrap=0):
 				y = gaussian(x_axis_values, fitted_mu, fitted_sigma, fitted_amplitude),
 				label = f'Fitted Gaussian (σ={fitted_sigma*1e12:.2f} ps)',
 			)
-			draw_median_and_MAD_vertical_lines(
-				plotlyfig = fig.plotly_figure,
-				center = np.median(list(Delta_t_df.loc[(Delta_t_df['k_1 (%)']==best_k1k2[0])&(Delta_t_df['k_2 (%)']==best_k1k2[1]),'Δt (s)'])),
-				amplitude = Delta_t_fluctuations_df.loc[best_k1k2,'k MAD(Δt) (s)'],
-				text = f"k MAD(Δt) = {Delta_t_fluctuations_df.loc[best_k1k2,'k MAD(Δt) (s)']*1e12:.2f} ps",
-			)
+			# ~ draw_median_and_MAD_vertical_lines(
+				# ~ plotlyfig = fig.plotly_figure,
+				# ~ center = np.median(list(Delta_t_df.loc[(Delta_t_df['k_1 (%)']==best_k1k2[0])&(Delta_t_df['k_2 (%)']==best_k1k2[1]),'Δt (s)'])),
+				# ~ amplitude = Delta_t_fluctuations_df.loc[best_k1k2,'k MAD(Δt) (s)'],
+				# ~ text = f"k MAD(Δt) = {Delta_t_fluctuations_df.loc[best_k1k2,'k MAD(Δt) (s)']*1e12:.2f} ps",
+			# ~ )
 			fig.title = f'Δt for k1={best_k1k2[0]}, k2={best_k1k2[1]}<br><sup>Measurement: {bureaucrat.measurement_name}</sup>'
 			fig.save(file_name = str(bureaucrat.processed_data_dir_path/Path(f'histogram k1 {best_k1k2[0]} k2 {best_k1k2[1]}.html')))
 		
